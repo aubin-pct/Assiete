@@ -22,6 +22,8 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 ## Architecture du JS
 
 - État global : `S` (données persistées), `view` (onglet courant), `curDate` (jour affiché, `YYYY-MM-DD` en heure locale), `draft` (repas en cours de saisie), `armedDelete` (suppression en attente de confirmation).
+- États d'interface : `openMeal` (repas déplié dans le journal), `histSel` (jour sélectionné dans le graphique d'historique). `arm(id)` arme une suppression et la désarme seule après 4 s.
+- Le journal se navigue aussi au glissement horizontal (écouteurs `touchstart`/`touchend` globaux, hors `bind()`), et un tap sur le libellé du jour ramène à aujourd'hui.
 - Rendu : `render()` remplace entièrement `#app.innerHTML` avec la vue courante (`journalHTML`, `addHTML`, `historyHTML`, `settingsHTML`), puis appelle `bind()`, qui rattache tous les écouteurs. Tout nouvel élément interactif doit être branché dans `bind()`.
 - Exception au re-rendu complet : dans la liste d'aliments du brouillon, la saisie met à jour les champs voisins et `#totals` directement, sans `render()`, pour ne pas perdre le focus du clavier. Conserver ce comportement.
 - Navigation : barre du bas `nav.tabs` avec `data-view`, et `go(view)`.
