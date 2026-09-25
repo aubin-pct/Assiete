@@ -132,6 +132,29 @@ svg{flex:none}
 .mitems .li span:last-child{white-space:nowrap}
 .mact{display:flex;gap:8px;flex-wrap:wrap}
 .mact .btn{flex:1 1 140px}
+.mact3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mact3 .btn{flex-direction:column;gap:4px;min-height:62px;padding:6px 4px;font-size:.8rem;border-radius:16px}
+.btn.ghost.on{color:var(--carb)}
+
+/* repas rapides */
+.qlist{display:flex;flex-direction:column;gap:6px;max-height:352px;overflow-y:auto;overscroll-behavior:contain}
+.qrow{display:flex;align-items:center;gap:4px;background:var(--sunk);border-radius:18px;padding:6px}
+.qbody{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:none;background:none;padding:0;text-align:left;color:var(--ink)}
+.qthumb{width:46px;height:46px;border-radius:14px;object-fit:cover;flex:none;background:var(--surface);color:var(--muted);display:grid;place-items:center}
+.qthumb svg{width:22px;height:22px}
+.qmain{min-width:0;display:flex;flex-direction:column;gap:1px}
+.qmain b{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qmain .small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qstar,.qadd{flex:none;width:42px;height:42px;border:none;border-radius:50%;display:grid;place-items:center;transition:transform .12s}
+.qstar:active,.qadd:active{transform:scale(.9)}
+.qstar{background:none;color:var(--muted)}
+.qstar.on{color:var(--carb)}
+.qadd{background:var(--grad);color:var(--accent-ink);box-shadow:0 8px 16px -10px var(--accent)}
+.qadd.done{background:var(--surface);color:var(--accent);box-shadow:none}
+.qstar svg,.qadd svg{width:20px;height:20px}
+.seg button[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.16)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row2 label{min-width:0}
 .empty{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 20px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
 .empty .orb{width:84px;height:84px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin-bottom:10px}
 .empty .orb svg{width:38px;height:38px}
@@ -141,7 +164,9 @@ svg{flex:none}
 /* formulaires */
 .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:14px}
 label.f,.fl{display:flex;flex-direction:column;gap:7px;font-size:.85rem;color:var(--muted);font-weight:600}
-input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{width:100%;border:none;background:var(--sunk);border-radius:14px;padding:13px 14px;font-size:16px;color:var(--ink)}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;min-height:48px;text-align:left}
+input::-webkit-date-and-time-value{text-align:left}
+input[type=text],input[type=password],input[type=number],input[type=url],input[type=date],input[type=time],select,textarea{width:100%;border:none;background:var(--sunk);border-radius:14px;padding:13px 14px;font-size:16px;color:var(--ink)}
 ::placeholder{color:var(--muted);opacity:.75}
 textarea{resize:vertical;min-height:76px}
 .row{display:flex;gap:10px;flex-wrap:wrap}
@@ -293,6 +318,9 @@ nav.tabs .add[aria-current=page]{color:var(--accent)}
 
 .toast{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:99px;font-size:.9rem;font-weight:500;max-width:calc(100% - 32px);text-align:center;z-index:20;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:var(--shadow)}
 .toast.show{opacity:1;transform:translateX(-50%)}
+.toast.act{display:flex;align-items:center;gap:10px;width:max-content;padding:6px 6px 6px 18px;text-align:left}
+.toast.act.show{pointer-events:auto}
+.tact{flex:none;border:none;border-radius:99px;min-height:36px;padding:0 14px;background:color-mix(in srgb,var(--bg) 18%,transparent);color:var(--bg);font-weight:700;font-size:.88rem}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -320,6 +348,7 @@ let S = load() || JSON.parse(JSON.stringify(DEFAULTS));
 S.settings = Object.assign({}, DEFAULTS.settings, S.settings || {});
 S.settings.goals = Object.assign({}, DEFAULTS.settings.goals, S.settings.goals || {});
 S.meals = S.meals || []; S.weights = S.weights || [];
+S.favs = S.favs || []; S.scanned = S.scanned || [];
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(S)); return true; }
   catch(e){ toast("Stockage plein : exporte tes données puis supprime d'anciens repas."); return false; }
@@ -363,7 +392,15 @@ function dayTotals(date){
 }
 const pct = (v,g) => g > 0 ? Math.min(100, v/g*100) : 0;
 let toastT;
-function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 3200); }
+// action facultative { label, fn } : bouton dans le toast (ex. « Annuler »), affiché plus longtemps
+function toast(msg, action){
+  const t = $("#toast");
+  t.innerHTML = `<span>${esc(msg)}</span>` + (action ? `<button class="tact">${esc(action.label)}</button>` : "");
+  t.classList.toggle("act", !!action);
+  if (action) t.querySelector(".tact").onclick = () => { clearTimeout(toastT); t.classList.remove("show"); action.fn(); };
+  t.classList.add("show"); clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove("show"), action ? 5000 : 3200);
+}
 function defaultType(){
   const h = new Date().getHours() + new Date().getMinutes()/60;
   if (h < 10.5) return "Petit-déjeuner";
@@ -382,6 +419,10 @@ const XI = ic(`<path d="M6 6l12 12M18 6L6 18"/>`, 2.2);
 const PLATE = ic(`<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>`, 1.5);
 const CHEV = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
 const LEFT = ic(`<path d="M15 5l-7 7 7 7"/>`, 2.2), RIGHT = ic(`<path d="M9 5l7 7-7 7"/>`, 2.2);
+const PLUS = ic(`<path d="M12 5v14M5 12h14"/>`, 2.2), CHECK = ic(`<path d="M5 12.5l4.5 4.5L19 7.5"/>`, 2.4);
+const REDO = ic(`<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/>`);
+const STARP = `<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>`;
+const STAR = ic(STARP), STARF = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">${STARP}</svg>`;
 const BAR = ic(`<path d="M3 7V5a1 1 0 0 1 1-1h2M18 4h2a1 1 0 0 1 1 1v2M21 17v2a1 1 0 0 1-1 1h-2M6 20H4a1 1 0 0 1-1-1v-2"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8M15 8v5"/>`);
 
 /* ---------- state ---------- */
@@ -394,7 +435,10 @@ let histSel = null;    // jour sélectionné dans le graphique d'historique
 const MAXP = 6;         // photos max par repas
 // photos : [{ full, thumb }] ; seule la miniature de la première est enregistrée avec le repas
 // products : produits scannés { code, nom, per:{kcal,p,c,f} pour 100 g, portion, used } ; envoyés à l'IA comme référence
-function newDraft(){ return { photos:[], products:[], note:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
+// editId : id du repas enregistré en cours de modification (null pour un nouveau repas)
+// date, time : null = valeurs par défaut (jour affiché, heure actuelle ou heure habituelle du type)
+// thumb : miniature reprise d'un repas existant (modification, repas rapide)
+function newDraft(){ return { editId:null, date:null, time:null, thumb:null, photos:[], products:[], note:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
 function arm(id){
   armedDelete = id; clearTimeout(armT);
   armT = setTimeout(() => { if (armedDelete === id){ armedDelete = null; render(); } }, 4000);
@@ -405,7 +449,67 @@ function animateIn(){
   const app = $("#app"); app.classList.remove("enter"); void app.offsetWidth; app.classList.add("enter");
   clearTimeout(enterT); enterT = setTimeout(() => app.classList.remove("enter"), 1300);
 }
-function go(v){ view = v; armedDelete = null; render(); window.scrollTo(0,0); animateIn(); }
+function go(v){
+  if (view === "add" && v !== "add" && draft.editId) draft = newDraft();   // quitter une modification l'abandonne
+  view = v; armedDelete = null; render(); window.scrollTo(0,0); animateIn();
+}
+
+/* ---------- repas rapides et modification ---------- */
+const TYPICAL = { "Petit-déjeuner":"08:00", "Déjeuner":"12:30", "Collation":"16:30", "Dîner":"20:00" };
+const nowHM = () => { const d = new Date(); return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); };
+const defaultTime = (date, type) => date === todayISO() ? nowHM() : (TYPICAL[type] || "12:00");
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const cleanItems = items => items.map(({ nom, g, kcal, p, c, f }) => ({ nom, g, kcal, p, c, f }));
+const withRatio = items => items.map(i => { const it = { ...i }; setRatio(it); return it; });
+// deux repas identiques (même nom, mêmes aliments et grammes) ont la même signature
+const sig = m => (m.name || "").trim().toLowerCase() + "|" + m.items.map(i => String(i.nom).trim().toLowerCase() + ":" + Math.round(i.g)).join(",");
+const isFav = m => { const s = sig(m); return S.favs.some(f => sig(f) === s); };
+function toggleFav(m){
+  const s = sig(m);
+  if (S.favs.some(f => sig(f) === s)){ S.favs = S.favs.filter(f => sig(f) !== s); save(); toast("Retiré des favoris"); return; }
+  S.favs.unshift({ id:newId(), name:m.name || "", type:m.type, items:cleanItems(m.items), thumb:m.thumb || null });
+  if (!save()){ S.favs.shift(); return; }
+  toast("Ajouté aux favoris");
+}
+function recentMeals(){
+  const favs = new Set(S.favs.map(sig)), seen = new Set(), out = [];
+  for (const m of [...S.meals].sort((a,b) => (b.date + b.time).localeCompare(a.date + a.time))){
+    const s = sig(m); if (seen.has(s) || favs.has(s)) continue;
+    seen.add(s); out.push(m); if (out.length >= 12) break;
+  }
+  return out;
+}
+const quickList = tab => tab === "favs" ? S.favs : tab === "prods" ? S.scanned : recentMeals();
+// enregistre des copies de repas, avec « Annuler » dans le toast
+function logCopies(list, date, keepTime){
+  const added = list.map(src => ({ id:newId(), date, time: keepTime && src.time ? src.time : defaultTime(date, src.type),
+    type:src.type, name:src.name || "", items:cleanItems(src.items), thumb:src.thumb || null }));
+  S.meals.push(...added);
+  if (!save()){ S.meals = S.meals.filter(m => !added.includes(m)); return; }
+  render();
+  const ids = new Set(added.map(m => m.id));
+  const where = view === "journal" && date === curDate ? "" : ` · ${dayLabel(date)}`;
+  toast(added.length > 1 ? `${added.length} repas ajoutés${where}` : `${added[0].name || added[0].type} ajouté${where}`,
+    { label:"Annuler", fn:() => { S.meals = S.meals.filter(m => !ids.has(m.id)); save(); render(); } });
+}
+// mémorise les produits scannés pour les réutiliser sans rescanner (30 derniers)
+function rememberProduct(pr){
+  S.scanned = [{ code:pr.code, nom:pr.nom, per:pr.per, portion:pr.portion }, ...S.scanned.filter(p => p.code !== pr.code)].slice(0, 30);
+  save();
+}
+function editMeal(id){
+  const m = S.meals.find(x => x.id === id); if (!m) return;
+  draft = newDraft();
+  Object.assign(draft, { editId:m.id, name:m.name || "", type:m.type, date:m.date, time:m.time, thumb:m.thumb || null, items:withRatio(m.items) });
+  go("add");
+}
+// repas rapide chargé dans le brouillon, pour l'ajuster avant de l'ajouter
+function loadIntoDraft(src){
+  draft = newDraft();
+  Object.assign(draft, { name:src.name || "", type:src.type || draft.type, thumb:src.thumb || null, items:withRatio(src.items) });
+  render();
+  document.getElementById("items")?.scrollIntoView({ behavior:"smooth", block:"start" });
+}
 document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => go(b.dataset.view)));
 
 function render(){
@@ -435,6 +539,7 @@ function ringHTML(v, g){
 function journalHTML(){
   const g = S.settings.goals, t = dayTotals(curDate), isToday = curDate === todayISO();
   const meals = S.meals.filter(m => m.date === curDate).sort((a,b) => a.time.localeCompare(b.time));
+  const yCount = isToday && !meals.length ? S.meals.filter(m => m.date === shift(curDate, -1)).length : 0;
   const rest = g.kcal - t.kcal;
   const restHTML = rest >= 0
     ? `<div class="rest"><span class="lbl">Restantes</span><b class="num">${fmt(rest)}</b><span class="muted small">Objectif ${fmt(g.kcal)} kcal</span></div>`
@@ -451,6 +556,11 @@ function journalHTML(){
       </button>
       ${open ? `<div class="mpanel">
         <div class="mitems">${m.items.map(i => `<div class="li"><span>${esc(i.nom)}</span><span class="muted num">${i.g ? fmt(i.g) + " g · " : ""}${fmt(i.kcal)} kcal</span></div>`).join("")}</div>
+        <div class="mact3">
+          <button class="btn ghost" data-edit="${m.id}">${PEN}Modifier</button>
+          <button class="btn ghost" data-redo="${m.id}" aria-label="Refaire ce repas aujourd'hui">${REDO}Refaire</button>
+          <button class="btn ghost${isFav(m) ? " on" : ""}" data-fav="${m.id}" aria-pressed="${isFav(m)}">${isFav(m) ? STARF : STAR}Favori</button>
+        </div>
         <div class="mact">
           ${m.thumb ? `<button class="btn sm danger${armedP ? " armed" : ""}" data-delphoto="${m.id}">${armedP ? "Confirmer" : "Retirer la photo"}</button>` : ""}
           <button class="btn sm danger${armed ? " armed" : ""}" data-del="${m.id}">${armed ? "Confirmer" : "Supprimer le repas"}</button>
@@ -459,7 +569,10 @@ function journalHTML(){
   }).join("") : `<div class="empty"><div class="orb">${PLATE}</div>
       <b>${isToday ? "Ton assiette est vide" : "Rien ce jour-là"}</b>
       <span class="muted">${isToday ? "Photographie ton prochain repas pour commencer." : "Tu peux ajouter un repas à cette date."}</span>
-      <button class="btn" data-go="add">${CAM}Ajouter un repas</button></div>`;
+      <button class="btn" data-go="add">${CAM}Ajouter un repas</button>
+      ${isToday && yCount ? `<button class="btn ghost" id="copyyest">${REDO}Copier les repas d'hier (${yCount})</button>` : ""}</div>`;
+  const copyDay = !isToday && meals.length
+    ? `<button class="btn ghost" id="copyday">${REDO}Copier ${meals.length > 1 ? `ces ${meals.length} repas` : "ce repas"} à aujourd'hui</button>` : "";
   return `
   <div class="top">
     <button class="daybtn" id="today" ${isToday ? "" : `aria-label="Revenir à aujourd'hui"`}><div class="title">${esc(dayTitle(curDate))}</div>
@@ -471,7 +584,8 @@ function journalHTML(){
     <div class="macros">${macroHTML("p","Protéines",t.p,g.p)}${macroHTML("c","Glucides",t.c,g.c)}${macroHTML("f","Lipides",t.f,g.f)}</div>
   </section>
   <div class="sect"><h2>Repas</h2>${meals.length ? `<span class="muted small">${meals.length} · touche pour le détail</span>` : ""}</div>
-  <div class="meals">${list}</div>`;
+  <div class="meals">${list}</div>
+  ${copyDay}`;
 }
 
 /* ---------- add ---------- */
@@ -532,30 +646,83 @@ function photosHTML(){
     <div class="count">${d.photos.length} photo${d.photos.length > 1 ? "s" : ""} sur ${MAXP} maximum</div>`}
   </section>`;
 }
+let quickTab = null;   // onglet affiché dans « Repas rapides »
+function quickHTML(){
+  const tabs = [["favs","Favoris"],["recents","Récents"],["prods","Produits"]].map(([k, l]) => [k, l, quickList(k)]).filter(t => t[2].length);
+  if (!tabs.length) return "";
+  if (!tabs.some(t => t[0] === quickTab)) quickTab = tabs[0][0];
+  const list = tabs.find(t => t[0] === quickTab)[2];
+  const rows = quickTab === "prods"
+    ? list.map((pr, i) => { const inDraft = draft.products.some(p => p.code === pr.code);
+        return `<div class="qrow"><div class="qbody"><div class="qthumb">${BAR}</div>
+          <span class="qmain"><b>${esc(pr.nom)}</b><span class="muted small num">${perTxt(pr)} · 100 g</span></span></div>
+          <button class="qadd${inDraft ? " done" : ""}" data-qprod="${i}" ${inDraft ? "disabled" : ""} aria-label="${inDraft ? "Déjà dans le repas" : `Ajouter ${esc(pr.nom)} au repas`}">${inDraft ? CHECK : PLUS}</button></div>`; })
+    : list.map((m, i) => { const x = totals(m.items), fav = quickTab === "favs", nm = esc(m.name || m.type);
+        return `<div class="qrow"><button class="qbody" data-qload="${i}" aria-label="Ajuster ${nm} avant de l'ajouter">
+          ${m.thumb ? `<img class="qthumb" src="${m.thumb}" alt="">` : `<div class="qthumb">${PLATE}</div>`}
+          <span class="qmain"><b>${nm}</b><span class="muted small num">${fmt(x.kcal)} kcal · P ${fmt(x.p)} g</span></span></button>
+          <button class="qstar${fav ? " on" : ""}" data-qfav="${i}" aria-pressed="${fav}" aria-label="${fav ? "Retirer des favoris" : "Ajouter aux favoris"}">${fav ? STARF : STAR}</button>
+          <button class="qadd" data-qlog="${i}" aria-label="Ajouter ${nm} au journal">${PLUS}</button></div>`; });
+  return `<section class="card" id="quick">
+    <div class="sect2"><h2>Repas rapides</h2><span class="muted small">sans analyse</span></div>
+    ${tabs.length > 1 ? `<div class="seg" style="grid-template-columns:repeat(${tabs.length},1fr)" role="tablist">${tabs.map(t =>
+      `<button role="tab" aria-selected="${t[0] === quickTab}" data-qtab="${t[0]}">${t[1]}</button>`).join("")}</div>` : ""}
+    <div class="qlist">${rows.join("")}</div>
+    <div class="muted small">${quickTab === "prods" ? "+ ajoute le produit au repas : indique la quantité puis analyse."
+      : "+ ajoute tout de suite au journal. Touche le nom pour ajuster les grammes avant."}</div>
+  </section>`;
+}
+function whenHTML(){
+  const d = draft, date = d.date || curDate;
+  return `<div class="row2">
+    <label class="f">Date<input type="date" id="mdate" max="${todayISO()}" value="${date}"></label>
+    <label class="f">Heure<input type="time" id="mtime" value="${d.time || defaultTime(date, d.type)}"></label></div>`;
+}
+const typeSegHTML = () => `<div class="fl">Type de repas
+  <div class="seg" role="radiogroup" aria-label="Type de repas">${TYPES.map(t => `<button type="button" role="radio" aria-checked="${t === draft.type}" data-type="${t}">${SHORT[t]}</button>`).join("")}</div></div>`;
+function itemsBlockHTML(saveLabel){
+  return `<div id="items">${draft.items.map(itemHTML).join("")}</div>
+    <button class="btn ghost" id="additem">${PLUS}Ajouter un aliment</button>
+    <div class="savebar">
+      <div class="totals" id="totals">${totalsHTML()}</div>
+      <button class="btn" id="savemeal" ${draft.items.length ? "" : "disabled"}>${saveLabel}</button>
+    </div>`;
+}
+function editHTML(){
+  const d = draft;
+  return `
+  <div class="top"><div><div class="title">Modifier le repas</div><div class="sub">${esc(cap(dayLabel(d.date)))} · ${esc(d.time)}</div></div></div>
+  <section class="card">
+    <label class="f">Nom du repas<input type="text" id="mealname" value="${esc(d.name)}" placeholder="ex. Poulet riz brocolis"></label>
+    ${typeSegHTML()}
+    ${whenHTML()}
+    <div class="muted small">Change les grammes : les calories et macros suivent automatiquement.</div>
+  </section>
+  ${itemsBlockHTML("Enregistrer les modifications")}
+  <button class="textbtn" id="canceledit">Annuler les modifications</button>`;
+}
 function addHTML(){
   const d = draft;
+  if (d.editId) return editHTML();
   const noKey = !S.settings.apiKey;
   const showManual = !d.analysed && !d.items.length;
+  const day = d.date || curDate;
   const result = (d.analysed || d.items.length) ? `
     <section class="card">
       <label class="f">Nom du repas<input type="text" id="mealname" value="${esc(d.name)}" placeholder="ex. Poulet riz brocolis"></label>
+      ${whenHTML()}
       ${d.hyp ? `<div class="note">${esc(d.hyp)}${d.conf ? ` <span class="muted">· confiance ${esc(d.conf)}</span>` : ""}</div>` : ""}
       <div class="muted small">Change les grammes : les calories et macros suivent automatiquement.</div>
     </section>
-    <div id="items">${d.items.map(itemHTML).join("")}</div>
-    <button class="btn ghost" id="additem">Ajouter un aliment</button>
-    <div class="savebar">
-      <div class="totals" id="totals">${totalsHTML()}</div>
-      <button class="btn" id="savemeal" ${d.items.length ? "" : "disabled"}>Ajouter au journal · ${dayLabel(curDate)}</button>
-    </div>` : "";
+    ${itemsBlockHTML(`Ajouter au journal · ${esc(dayLabel(day))}`)}` : "";
   return `
-  <div class="top"><div><div class="title">Nouveau repas</div><div class="sub">Pour ${esc(dayLabel(curDate).toLowerCase())}</div></div></div>
+  <div class="top"><div><div class="title">Nouveau repas</div><div class="sub">Pour ${esc(dayLabel(day).toLowerCase())}</div></div></div>
   ${noKey ? `<div class="note">Pour l'analyse photo, il faut une clé API. <button class="link" data-go="settings">Ouvrir les Réglages</button>. La saisie manuelle marche sans clé.</div>` : ""}
   ${d.photos.length ? photosHTML() : captureHTML(showManual)}
+  ${!d.photos.length && !d.items.length && !d.analysed ? quickHTML() : ""}
   ${productsHTML()}
   <section class="card">
-    <div class="fl">Type de repas
-      <div class="seg" role="radiogroup" aria-label="Type de repas">${TYPES.map(t => `<button type="button" role="radio" aria-checked="${t === d.type}" data-type="${t}">${SHORT[t]}</button>`).join("")}</div></div>
+    ${typeSegHTML()}
     <label class="f">Quantités et précisions${d.products.length && !d.photos.length ? "" : " (facultatif)"}<textarea id="note" placeholder="ex. 300 g de riz cuit, 1 c. à s. d'huile d'olive, un yaourt entier">${esc(d.note)}</textarea></label>
     <label class="switch"><span>Analyse approfondie<small>Plus lente, un peu plus précise</small></span><input type="checkbox" id="deep" ${S.settings.deep ? "checked" : ""}></label>
     ${d.error ? `<div class="err" role="alert">${esc(d.error)}</div>` : ""}
@@ -700,12 +867,21 @@ function saveMeal(){
   if (!items.length){ toast("Ajoute au moins un aliment."); return; }
   const pending = draft.products.filter(p => !p.used);
   if (pending.length){ toast(`${S.settings.apiKey ? "Relance l'analyse pour compter" : "Ajoute tel quel"} ${pending.map(p => p.nom).join(", ")}, ou retire-le.`); return; }
-  const now = new Date();
-  S.meals.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), date: curDate,
-    time: String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0"),
-    type: draft.type, name: draft.name.trim(), items, thumb: draft.photos[0]?.thumb || null });
-  if (!save()){ S.meals.pop(); return; }
-  draft = newDraft(); toast("Repas ajouté"); go("journal");
+  const date = draft.date || curDate, time = draft.time || defaultTime(date, draft.type);
+  if (date > todayISO()){ toast("Choisis aujourd'hui ou une date passée."); return; }
+  const data = { date, time, type:draft.type, name:draft.name.trim(), items, thumb: draft.photos[0]?.thumb || draft.thumb || null };
+  if (draft.editId){
+    const m = S.meals.find(x => x.id === draft.editId);
+    if (!m){ draft = newDraft(); toast("Ce repas n'existe plus."); go("journal"); return; }
+    const before = { ...m }; Object.assign(m, data);
+    if (!save()){ Object.assign(m, before); return; }
+    openMeal = m.id; toast("Repas modifié");
+  } else {
+    S.meals.push({ id:newId(), ...data });
+    if (!save()){ S.meals.pop(); return; }
+    toast("Repas ajouté");
+  }
+  curDate = date; draft = newDraft(); go("journal");
 }
 
 /* ---------- code-barres ---------- */
@@ -743,6 +919,8 @@ function gtinOk(code){
 // renvoie { code, nom, per, portion }, ou null si introuvable, ou { nom, empty:true } sans valeurs nutritionnelles
 const offCache = new Map();
 async function lookupOFF(code){
+  const known = S.scanned.find(p => p.code === code);   // déjà scanné : pas d'appel réseau
+  if (known) return known;
   if (!offCache.has(code)) offCache.set(code, fetchOFF(code).catch(e => { offCache.delete(code); throw e; }));
   return offCache.get(code);
 }
@@ -887,6 +1065,7 @@ async function onCode(me, code){
     else if (pr.empty) scMsg(`${pr.nom} : pas de valeurs nutritionnelles connues. Photographie l'étiquette.`, "warn");
     else {
       draft.products.push({ ...pr, used:false });
+      rememberProduct(pr);
       me.added.push(pr.code); scList(); render();
       scMsg(`Ajouté : ${pr.nom}. Scanne le suivant ou touche Terminé.`, "ok");
     }
@@ -1023,6 +1202,14 @@ function bind(){
     if (armedDelete !== id){ arm(id); render(); return; }
     S.meals = S.meals.filter(m => m.id !== id); armedDelete = null; if (openMeal === id) openMeal = null; save(); render(); toast("Repas supprimé");
   }));
+  const mealOf = b => S.meals.find(m => m.id === b.dataset.edit || m.id === b.dataset.redo || m.id === b.dataset.fav);
+  document.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editMeal(b.dataset.edit)));
+  document.querySelectorAll("[data-redo]").forEach(b => b.addEventListener("click", () => {
+    const m = mealOf(b); if (m) logCopies([{ ...m, type: defaultType() }], todayISO());
+  }));
+  document.querySelectorAll("[data-fav]").forEach(b => b.addEventListener("click", () => { const m = mealOf(b); if (m){ toggleFav(m); render(); } }));
+  on("#copyday","click", () => logCopies(S.meals.filter(m => m.date === curDate), todayISO(), true));
+  on("#copyyest","click", () => logCopies(S.meals.filter(m => m.date === shift(todayISO(), -1)), todayISO(), true));
   document.querySelectorAll("[data-delphoto]").forEach(b => b.addEventListener("click", () => {
     const id = b.dataset.delphoto, key = "ph:" + id;
     if (armedDelete !== key){ arm(key); render(); return; }
@@ -1049,6 +1236,29 @@ function bind(){
     draft.photos.splice(+b.dataset.rmphoto, 1); draft.error = ""; render();
   }));
   on("#scan","click", openScanner);
+  // repas rapides
+  document.querySelectorAll("[data-qtab]").forEach(b => b.addEventListener("click", () => { quickTab = b.dataset.qtab; render(); }));
+  document.querySelectorAll("[data-qlog]").forEach(b => b.addEventListener("click", () => {
+    // type d'origine du repas, sauf si l'utilisateur a choisi un type sur cet écran
+    const m = quickList(quickTab)[+b.dataset.qlog]; if (m) logCopies([{ ...m, type: draft.typeSet ? draft.type : m.type }], draft.date || curDate);
+  }));
+  document.querySelectorAll("[data-qload]").forEach(b => b.addEventListener("click", () => {
+    const m = quickList(quickTab)[+b.dataset.qload]; if (m) loadIntoDraft(m);
+  }));
+  document.querySelectorAll("[data-qfav]").forEach(b => b.addEventListener("click", () => {
+    const m = quickList(quickTab)[+b.dataset.qfav]; if (m){ toggleFav(m); render(); }
+  }));
+  document.querySelectorAll("[data-qprod]").forEach(b => b.addEventListener("click", () => {
+    const pr = S.scanned[+b.dataset.qprod];
+    if (pr && !draft.products.some(p => p.code === pr.code)){ draft.products.push({ ...pr, used:false }); render(); toast(`${pr.nom} ajouté au repas`); }
+  }));
+  // date et heure du repas
+  on("#mdate","change", e => {
+    if (!e.target.value) return;
+    draft.date = e.target.value > todayISO() ? todayISO() : e.target.value; render();
+  });
+  on("#mtime","change", e => { if (e.target.value) draft.time = e.target.value; });
+  on("#canceledit","click", () => { draft = newDraft(); go("journal"); });
   document.querySelectorAll("[data-rmprod]").forEach(b => b.addEventListener("click", () => {
     draft.products.splice(+b.dataset.rmprod, 1); render();
   }));
@@ -1064,8 +1274,9 @@ function bind(){
     const h = $("#ahint"); if (h) h.hidden = !!(draft.photos.length || draft.products.length || draft.note.trim());
   });
   document.querySelectorAll("[data-type]").forEach(b => b.addEventListener("click", () => {
-    draft.type = b.dataset.type;
+    draft.type = b.dataset.type; draft.typeSet = true;
     document.querySelectorAll("[data-type]").forEach(x => x.setAttribute("aria-checked", String(x === b)));
+    const t = $("#mtime"); if (t && !draft.time) t.value = defaultTime(draft.date || curDate, draft.type);   // heure habituelle du type
   }));
   on("#deep","change", e => { S.settings.deep = e.target.checked; save(); });
   on("#analyse","click", analyse);
@@ -1115,7 +1326,7 @@ function bind(){
     render();
   });
   on("#export","click", () => {
-    const out = { app:"assiette", version:1, exported: new Date().toISOString(), goals:S.settings.goals, meals:S.meals, weights:S.weights };
+    const out = { app:"assiette", version:1, exported: new Date().toISOString(), goals:S.settings.goals, meals:S.meals, weights:S.weights, favs:S.favs };
     const blob = new Blob([JSON.stringify(out)], { type:"application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `assiette-${todayISO()}.json`;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -1129,13 +1340,17 @@ function bind(){
       S.meals = S.meals.concat(j.meals.filter(m => m && m.id && m.date && Array.isArray(m.items) && !ids.has(m.id)));
       const wd = new Set(S.weights.map(w => w.date));
       S.weights = S.weights.concat(j.weights.filter(w => w && w.date && num(w.kg) && !wd.has(w.date)));
+      if (Array.isArray(j.favs)){
+        const fs = new Set(S.favs.map(sig));
+        S.favs = S.favs.concat(j.favs.filter(f => f && Array.isArray(f.items) && !fs.has(sig(f))));
+      }
       if (j.goals) Object.assign(S.settings.goals, j.goals);
       save(); render(); toast("Données importées");
     } catch(err){ toast("Fichier non reconnu. Choisis un export d'Assiette (.json)."); }
   });
   on("#wipe","click", () => {
     if (armedDelete !== "wipe"){ arm("wipe"); render(); return; }
-    S.meals = []; S.weights = []; armedDelete = null; save(); render(); toast("Données effacées");
+    S.meals = []; S.weights = []; S.favs = []; S.scanned = []; armedDelete = null; save(); render(); toast("Données effacées");
   });
 }
 

@@ -32,6 +32,10 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 - Scanner de code-barres (`openScanner`) : superposition plein écran ajoutée à `body`, hors de `#app` et de `render()`, état dans `SC`. `getDetector()` prend le `BarcodeDetector` natif s'il lit l'EAN-13 (Chrome Android), sinon charge la bibliothèque ZXing (iOS). Lecture continue toutes les 150 ms (`tick`). Un produit déjà dans `draft.products` n'est jamais ajouté deux fois ; les pastilles du scanner (`scList`, `[data-sccode]`) permettent de retirer un produit sans fermer. Secours : saisie du code à la main et « Photo du code » (lecture sur une image). La caméra est coupée quand la page passe en arrière-plan et relancée au retour ; le bouton retour d'Android ferme le scanner (`history.pushState` + `popstate`). `getUserMedia` exige HTTPS (ou `localhost`).
 - Produits scannés : un scan n'ajoute pas un aliment mais une référence dans `draft.products = [{ code, nom, per, portion, used }]` (`per` = valeurs pour 100 g tel que vendu, `lookupOFF` mis en cache dans `offCache`). Ils s'affichent dans la carte `#prods` (`productsHTML`, retrait par `[data-rmprod]`) et sont envoyés à l'IA avec les photos et les « Quantités et précisions » ; l'analyse marche aussi sans photo (« 300 g de riz »). L'IA renvoie `code` sur l'aliment correspondant et choisit les grammes (convertis en poids tel que vendu si l'utilisateur donne un poids cuit) ; `analyse()` recalcule toujours les macros de ces aliments depuis `per` (`productItem`) et rajoute avec la portion un produit oublié par l'IA. `used` passe à `true` après une analyse ; `saveMeal()` refuse d'enregistrer tant qu'un produit scanné n'a pas été analysé. Sans clé API, `[data-direct]` (« Ajouter tel quel ») transforme le produit en aliment `scan: true`, conservé aux analyses suivantes et signalé au modèle comme déjà compté. `saveMeal()` n'enregistre que `{ nom, g, kcal, p, c, f }`.
 - Design : cartes sans bordure avec `--shadow`, rayons `--radius` (26 px) et `--r-md`, dégradé `--grad`, barre du bas flottante (`nav.tabs`). La barre d'enregistrement `.savebar` est en `position:sticky` avec un `bottom` calé sur la hauteur de la barre du bas (~102 px) : si on change la hauteur de `nav.tabs`, ajuster aussi `.savebar`, `.toast` et le `padding-bottom` du `body`. L'animation d'entrée (`#app.enter`) ne se joue que dans `go()` via `animateIn()`, jamais dans `render()`.
+- Repas rapides (carte `#quick` de l'écran d'ajout, `quickHTML`, onglet dans `quickTab`) : Favoris (`S.favs`), Récents (`recentMeals()`, repas distincts selon `sig()`, hors favoris) et Produits (`S.scanned`). « + » enregistre tout de suite une copie (`logCopies`, avec « Annuler » dans le toast) en gardant le type d'origine, sauf si l'utilisateur a choisi un type (`draft.typeSet`) ; toucher le nom charge le repas dans le brouillon (`loadIntoDraft`) pour l'ajuster. Un produit s'ajoute à `draft.products`. `lookupOFF` lit d'abord `S.scanned` : un produit connu ne coûte aucun appel réseau.
+- Journal : un repas déplié propose Modifier (`editMeal`), Refaire (copie aujourd'hui, type selon l'heure) et Favori (`toggleFav`). Un jour passé propose « Copier ces repas à aujourd'hui » ; aujourd'hui vide propose « Copier les repas d'hier ». Les copies gardent les heures d'origine.
+- Modification : `draft.editId` passe l'écran d'ajout en mode modification (`editHTML`) ; `saveMeal()` remplace alors le repas (même `id`). Quitter l'onglet abandonne la modification (`go()`). Date et heure (`#mdate`, `#mtime`) sont modifiables pour tout repas ; par défaut, l'heure actuelle aujourd'hui, sinon l'heure habituelle du type (`TYPICAL`). Pas de date future.
+- `toast(msg, { label, fn })` affiche un bouton d'action (« Annuler ») pendant 5 s.
 - Rendu : `render()` remplace entièrement `#app.innerHTML` avec la vue courante (`journalHTML`, `addHTML`, `historyHTML`, `settingsHTML`), puis appelle `bind()`, qui rattache tous les écouteurs. Tout nouvel élément interactif doit être branché dans `bind()`.
 - Exception au re-rendu complet : dans la liste d'aliments du brouillon, la saisie met à jour les champs voisins et `#totals` directement, sans `render()`, pour ne pas perdre le focus du clavier. Conserver ce comportement.
 - Navigation : barre du bas `nav.tabs` avec `data-view`, et `go(view)`.
@@ -50,14 +54,18 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
     name, items: [{ nom, g, kcal, p, c, f }],
     thumb   // data URL JPEG 160×160, ou null
   }],
-  weights: [{ date: "YYYY-MM-DD", kg }]   // une pesée max par jour
+  weights: [{ date: "YYYY-MM-DD", kg }],   // une pesée max par jour
+  favs: [{ id, name, type, items, thumb }], // repas favoris (copies, indépendantes des repas du journal)
+  scanned: [{ code, nom, per: { kcal, p, c, f }, portion }]   // 30 derniers produits scannés, valeurs pour 100 g
 }
 ```
+
+`favs` et `scanned` ont été ajoutés sans changer de clé : ils valent `[]` s'ils manquent au chargement.
 
 - Au chargement, les réglages sont fusionnés avec `DEFAULTS` : on peut ajouter un champ de réglage sans migration.
 - Si le schéma change de façon incompatible, passer à `assiette.v2` et écrire une migration depuis `v1`. Ne jamais perdre les données existantes.
 - `save()` renvoie `false` si le quota est dépassé (environ 5 Mo). Les miniatures sont le poste le plus lourd. La photo pleine taille n'est jamais stockée.
-- L'export JSON exclut volontairement `apiKey`. L'import fusionne (dédoublonnage par `id` pour les repas, par `date` pour les pesées) et ne remplace pas.
+- L'export JSON exclut volontairement `apiKey` (et `scanned`, simple cache). L'import fusionne (dédoublonnage par `id` pour les repas, par `date` pour les pesées, par signature `sig()` pour les favoris) et ne remplace pas.
 
 ## Appel au modèle (`callModel`)
 
@@ -109,6 +117,7 @@ sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' > /tmp/app.js && node
 
 ## Pistes d'évolution
 
-- Bouton « refaire ce repas » et repas favoris, pour ne pas ré-analyser les plats habituels.
-- Modifier un repas déjà enregistré (aujourd'hui, on ne peut que le supprimer).
-- Courbe de poids avec moyenne mobile sur 7 jours.
+- Courbe de poids avec moyenne mobile sur 7 jours, puis objectifs adaptatifs (dépense réelle estimée à partir du poids et des apports).
+- Rappel d'export automatique, sauvegarde hors de l'appareil.
+- Vérification 4/4/9 des aliments renvoyés par l'IA, table Ciqual intégrée, recherche d'aliment par nom.
+- « Annuler » à la place de la double confirmation pour la suppression d'un repas.
