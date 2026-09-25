@@ -323,6 +323,16 @@ body.noscroll{overflow:hidden}
 .ebig{display:flex;flex-direction:column;gap:2px}
 .ebig b{font-family:var(--display);font-size:2.3rem;line-height:1.05;letter-spacing:-.03em}
 .needs{display:flex;flex-direction:column;gap:10px}
+
+/* sauvegarde */
+.bic{width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.bic svg{width:22px;height:22px}
+.warn .bic,.bkp .bic{background:color-mix(in srgb,var(--carb) 16%,transparent);color:var(--carb)}
+.bstat{display:flex;align-items:center;gap:12px}
+.bkp{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border-radius:22px;box-shadow:var(--shadow),inset 0 0 0 1.5px color-mix(in srgb,var(--carb) 45%,transparent);padding:14px}
+.bkp-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bkp-act{display:flex;align-items:center;gap:6px;margin-top:10px}
+.bkp-act .textbtn{padding:10px 12px}
 .need{display:flex;flex-direction:column;gap:5px}
 
 /* navigation flottante */
@@ -442,6 +452,8 @@ const PLUS = ic(`<path d="M12 5v14M5 12h14"/>`, 2.2), CHECK = ic(`<path d="M5 12
 const REDO = ic(`<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/>`);
 const STARP = `<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>`;
 const STAR = ic(STARP), STARF = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">${STARP}</svg>`;
+const SHIELD = ic(`<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>`);
+const SHARE = ic(`<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>`);
 const BAR = ic(`<path d="M3 7V5a1 1 0 0 1 1-1h2M18 4h2a1 1 0 0 1 1 1v2M21 17v2a1 1 0 0 1-1 1h-2M6 20H4a1 1 0 0 1-1-1v-2"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8M15 8v5"/>`);
 
 /* ---------- state ---------- */
@@ -598,6 +610,11 @@ function journalHTML(){
       <div class="sub">${esc(daySub(curDate))}${isToday ? "" : ` · <b>Aujourd'hui</b>`}</div></button>
     <div class="stepper"><button id="prev" aria-label="Jour précédent">${LEFT}</button>
       <button id="next" aria-label="Jour suivant" ${isToday ? "disabled" : ""}>${RIGHT}</button></div></div>
+  ${isToday && backupDue() ? `<section class="bkp"><div class="bic">${SHIELD}</div>
+    <div class="bkp-main"><b>${backupAge() === null ? "Pense à sauvegarder tes données" : ageTxt(backupAge())}</b>
+      <span class="muted small">Tes repas ne sont que sur ce téléphone. Une sauvegarde prend 10 secondes.</span>
+      <div class="bkp-act"><button class="btn sm" id="bkpnow">${SHARE}Sauvegarder</button><button class="textbtn" id="bkplater">Plus tard</button></div></div>
+  </section>` : ""}
   <section class="summary">
     <div class="hero">${ringHTML(t.kcal, g.kcal)}${restHTML}</div>
     <div class="macros">${macroHTML("p","Protéines",t.p,g.p)}${macroHTML("c","Glucides",t.c,g.c)}${macroHTML("f","Lipides",t.f,g.f)}</div>
@@ -1265,9 +1282,45 @@ function historyHTML(){
   ${energyHTML()}`;
 }
 
+/* ---------- sauvegarde ---------- */
+// Pas de serveur : la sauvegarde est un fichier JSON que l'utilisateur range lui-même
+// (menu de partage → Fichiers / iCloud Drive sur iPhone, Téléchargements puis Drive sur Android).
+const BACKUP_DAYS = 7;          // rappel au-delà de 7 jours sans sauvegarde
+const LS_QUOTA = 5e6;           // quota localStorage habituel, en caractères
+function backupData(){
+  const { apiKey, lastBackup, backupSnooze, ...settings } = S.settings;   // la clé API ne quitte jamais le téléphone
+  return { app:"assiette", version:1, exported:new Date().toISOString(), settings, goals:S.settings.goals,
+           meals:S.meals, weights:S.weights, favs:S.favs };
+}
+const backupAge = () => S.settings.lastBackup ? dnum(todayISO()) - dnum(S.settings.lastBackup) : null;
+function backupDue(){
+  if (S.meals.length < 3) return false;
+  const age = backupAge();
+  if (age !== null && age < BACKUP_DAYS) return false;
+  return !(S.settings.backupSnooze && S.settings.backupSnooze > todayISO());
+}
+const ageTxt = age => age === null ? "Jamais sauvegardé" : age === 0 ? "Sauvegardé aujourd'hui" : `Dernière sauvegarde il y a ${age} jour${age > 1 ? "s" : ""}`;
+function download(file){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+async function backup(){
+  const file = new File([JSON.stringify(backupData())], `assiette-${todayISO()}.json`, { type:"application/json" });
+  let shared = false;
+  if (navigator.canShare && navigator.canShare({ files:[file] })){
+    try { await navigator.share({ files:[file], title:"Sauvegarde Assiette" }); shared = true; }
+    catch(e){ if (e.name === "AbortError") return; }   // partage annulé : pas de sauvegarde ; autre erreur : téléchargement
+  }
+  if (!shared) download(file);
+  S.settings.lastBackup = todayISO(); S.settings.backupSnooze = ""; save(); render();
+  toast(shared ? "Sauvegarde envoyée." : "Fichier téléchargé : range-le dans Fichiers ou sur ton Drive.");
+}
+function storageUsed(){ try { return (localStorage.getItem(KEY) || "").length; } catch(e){ return 0; } }
+const mo = n => (n / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: n < 1e5 ? 2 : 1 }) + " Mo";
+
 /* ---------- settings ---------- */
 function settingsHTML(){
-  const st = S.settings, g = st.goals;
+  const st = S.settings, g = st.goals, age = backupAge(), used = storageUsed();
   return `
   <div class="top"><div><div class="title">Réglages</div><div class="sub">Objectifs, IA et données</div></div></div>
   <section class="card">
@@ -1293,10 +1346,21 @@ function settingsHTML(){
   </section>
   <button class="btn" id="savesettings">Enregistrer les réglages</button>
   <section class="card">
-    <h2>Données</h2>
-    <div class="muted small">${S.meals.length} repas et ${S.weights.length} pesées enregistrés sur cet appareil. Exporte de temps en temps : si tu vides les données du navigateur, tout est perdu.</div>
-    <div class="row"><button class="btn ghost" id="export">Exporter</button>
-      <label class="btn ghost" style="cursor:pointer" for="import">Importer<input type="file" id="import" accept="application/json,.json" hidden></label></div>
+    <h2>Sauvegarde</h2>
+    <div class="bstat${age === null || age >= BACKUP_DAYS ? " warn" : ""}"><div class="bic">${SHIELD}</div>
+      <div><b>${ageTxt(age)}</b><div class="muted small">Tes données ne sont que sur ce téléphone.</div></div></div>
+    <button class="btn" id="export">${SHARE}Sauvegarder maintenant</button>
+    <label class="btn ghost" style="cursor:pointer" for="import">Restaurer une sauvegarde<input type="file" id="import" accept="application/json,.json" hidden></label>
+    <div class="muted small">Sur iPhone, choisis « Enregistrer dans Fichiers » puis iCloud Drive. Sur Android, le fichier va dans Téléchargements : copie-le sur Google Drive. Restaurer ajoute ce qui manque sans rien effacer, et reprend les objectifs de la sauvegarde. La clé API n'est jamais incluse.</div>
+  </section>
+  <section class="card">
+    <h2>Données sur ce téléphone</h2>
+    <div class="small">${S.meals.length} repas, ${S.weights.length} pesée${S.weights.length > 1 ? "s" : ""}, ${S.favs.length} favori${S.favs.length > 1 ? "s" : ""}</div>
+    <div class="fl">Espace utilisé
+      <div class="bar${used / LS_QUOTA > .8 ? " over" : ""}"><span style="width:${Math.min(100, used / LS_QUOTA * 100)}%"></span></div>
+      <span class="muted small">${mo(used)} sur environ 5 Mo${used / LS_QUOTA > .7 ? ". Retire les photos d'anciens repas pour libérer de la place." : "."}</span></div>
+    <div class="muted small" id="persist" hidden></div>
+    <div class="muted small">Sur iPhone, supprimer l'icône de l'écran d'accueil efface aussi ces données.</div>
     <button class="btn danger${armedDelete === "wipe" ? " armed" : ""}" id="wipe">${armedDelete === "wipe" ? "Toucher encore pour tout effacer" : "Tout effacer"}</button>
   </section>`;
 }
@@ -1470,17 +1534,23 @@ function bind(){
     if (save()) toast("Réglages enregistrés");
     render();
   });
-  on("#export","click", () => {
-    const out = { app:"assiette", version:1, exported: new Date().toISOString(), goals:S.settings.goals, meals:S.meals, weights:S.weights, favs:S.favs };
-    const blob = new Blob([JSON.stringify(out)], { type:"application/json" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `assiette-${todayISO()}.json`;
-    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  });
+  on("#export","click", backup);
+  on("#bkpnow","click", backup);
+  on("#bkplater","click", () => { S.settings.backupSnooze = shift(todayISO(), 3); save(); render(); toast("Rappel dans 3 jours"); });
+  const pe = $("#persist");
+  if (pe && navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(p => {
+    pe.textContent = p ? "Stockage protégé : le navigateur ne l'effacera pas pour gagner de la place."
+                       : "Stockage non garanti : le navigateur peut l'effacer s'il manque de place. Sauvegarde régulièrement.";
+    pe.hidden = false;
+  }).catch(() => {});
   on("#import","change", async e => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
-    try {
-      const j = JSON.parse(await file.text());
-      if (!Array.isArray(j.meals) || !Array.isArray(j.weights)) throw new Error();
+    e.target.value = "";
+    let j;
+    try { j = JSON.parse(await file.text()); if (!Array.isArray(j.meals) || !Array.isArray(j.weights)) throw new Error(); }
+    catch(err){ toast("Fichier non reconnu. Choisis une sauvegarde d'Assiette (.json)."); return; }
+    const snap = JSON.stringify(S), n0 = { m:S.meals.length, w:S.weights.length, f:S.favs.length };
+    {
       const ids = new Set(S.meals.map(m => m.id));
       S.meals = S.meals.concat(j.meals.filter(m => m && m.id && m.date && Array.isArray(m.items) && !ids.has(m.id)));
       const wd = new Set(S.weights.map(w => w.date));
@@ -1489,9 +1559,18 @@ function bind(){
         const fs = new Set(S.favs.map(sig));
         S.favs = S.favs.concat(j.favs.filter(f => f && Array.isArray(f.items) && !fs.has(sig(f))));
       }
-      if (j.goals) Object.assign(S.settings.goals, j.goals);
-      save(); render(); toast("Données importées");
-    } catch(err){ toast("Fichier non reconnu. Choisis un export d'Assiette (.json)."); }
+      if (j.goals) for (const k of ["kcal","p","c","f"]) if (num(j.goals[k])) S.settings.goals[k] = Math.round(num(j.goals[k]));
+      // réglages de la sauvegarde, jamais la clé API
+      const st = j.settings || {};
+      if (typeof st.rate === "number" && Math.abs(st.rate) <= 1) S.settings.rate = st.rate;
+      if (typeof st.deep === "boolean") S.settings.deep = st.deep;
+      for (const k of ["baseUrl","model"]) if (typeof st[k] === "string" && st[k].trim()) S.settings[k] = st[k].trim();
+    }
+    if (!save()){ S = JSON.parse(snap); return; }
+    render();
+    const add = { m:S.meals.length - n0.m, w:S.weights.length - n0.w, f:S.favs.length - n0.f };
+    toast(add.m + add.w + add.f ? `Restauré : ${add.m} repas, ${add.w} pesée${add.w > 1 ? "s" : ""}, ${add.f} favori${add.f > 1 ? "s" : ""}.`
+      : "Rien de nouveau : tout était déjà sur ce téléphone. Réglages repris.");
   });
   on("#wipe","click", () => {
     if (armedDelete !== "wipe"){ arm("wipe"); render(); return; }

@@ -49,6 +49,7 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
   settings: {
     apiKey: "", baseUrl: "https://api.deepseek.com", model: "deepseek-flash", deep: false,
     rate: 0,   // objectif de poids en kg par semaine : < 0 perte, 0 maintien, > 0 prise (±0,25 ou ±0,5)
+    lastBackup: "YYYY-MM-DD", backupSnooze: "YYYY-MM-DD",   // dernière sauvegarde, rappel repoussé jusqu'à
     goals: { kcal: 3000, p: 160, c: 380, f: 90 }
   },
   meals: [{
@@ -68,7 +69,9 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 - Au chargement, les réglages sont fusionnés avec `DEFAULTS` : on peut ajouter un champ de réglage sans migration.
 - Si le schéma change de façon incompatible, passer à `assiette.v2` et écrire une migration depuis `v1`. Ne jamais perdre les données existantes.
 - `save()` renvoie `false` si le quota est dépassé (environ 5 Mo). Les miniatures sont le poste le plus lourd. La photo pleine taille n'est jamais stockée.
-- L'export JSON exclut volontairement `apiKey` (et `scanned`, simple cache). L'import fusionne (dédoublonnage par `id` pour les repas, par `date` pour les pesées, par signature `sig()` pour les favoris) et ne remplace pas.
+- Sauvegarde (`backup()`, section « sauvegarde » du JS) : fichier `assiette-AAAA-MM-JJ.json` produit par `backupData()` (`settings` sans `apiKey`, `lastBackup` ni `backupSnooze`, plus `goals`, `meals`, `weights`, `favs` ; `scanned` n'est qu'un cache). Envoyé par le menu de partage (`navigator.share` avec fichier) quand `navigator.canShare` l'accepte, sinon téléchargé ; un partage annulé (`AbortError`) ne compte pas. Pas de serveur : c'est l'utilisateur qui range le fichier (Fichiers / iCloud Drive, Google Drive).
+- Rappel : bandeau `.bkp` en haut du journal d'aujourd'hui quand `backupDue()` (au moins 3 repas, aucune sauvegarde depuis `BACKUP_DAYS` = 7 jours, pas de report en cours) ; « Plus tard » repousse de 3 jours. Les Réglages montrent l'âge de la sauvegarde, l'espace utilisé (`storageUsed()` sur ~5 Mo) et si le stockage est protégé (`navigator.storage.persisted()`).
+- Restauration (`#import`) : fusionne sans rien effacer (dédoublonnage par `id` pour les repas, par `date` pour les pesées, par signature `sig()` pour les favoris), reprend les objectifs et `rate`, `deep`, `baseUrl`, `model` de la sauvegarde, jamais la clé API. Si l'enregistrement échoue (quota), l'état précédent est rétabli. Les anciens exports (sans `settings` ni `favs`) restent acceptés.
 
 ## Appel au modèle (`callModel`)
 
@@ -116,10 +119,10 @@ sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' > /tmp/app.js && node
 - CORS non vérifié : l'appel direct à `api.deepseek.com` depuis le navigateur n'a pas encore été confirmé. En cas d'échec réseau, l'appli suggère OpenRouter (`https://openrouter.ai/api/v1`). Si DeepSeek bloque, la solution propre est un petit proxy (Cloudflare Worker, par exemple) qui garde la clé côté serveur.
 - Clé API : elle est stockée en clair dans le `localStorage` du téléphone. Acceptable pour un usage personnel. Ne jamais la mettre dans le code ni dans le dépôt.
 - Pas de service worker : pas de mode hors ligne. L'analyse a de toute façon besoin du réseau.
-- Données sur un seul appareil : la seule sauvegarde est l'export manuel.
+- Données sur un seul appareil : la seule sauvegarde est le fichier que l'utilisateur range lui-même (rappel chaque semaine). Certains navigateurs (a priori Chrome Android) refusent de partager un fichier `.json` : il est alors téléchargé.
 
 ## Pistes d'évolution
 
-- Rappel d'export automatique, sauvegarde hors de l'appareil.
+- Synchronisation automatique hors de l'appareil (nécessite un serveur ou un stockage en ligne).
 - Vérification 4/4/9 des aliments renvoyés par l'IA, table Ciqual intégrée, recherche d'aliment par nom.
 - « Annuler » à la place de la double confirmation pour la suppression d'un repas.
