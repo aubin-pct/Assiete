@@ -11,7 +11,10 @@ icon-192.png          # icône (aussi apple-touch-icon et favicon)
 icon-512.png          # icône maskable
 ```
 
-Pas de build, pas de dépendances, pas de framework. Vanilla JS en `"use strict"`. Seule ressource externe : les polices Google Fonts (Sora pour les titres et chiffres, Figtree pour le texte), avec repli sur les polices système.
+Pas de build, pas de dépendances, pas de framework. Vanilla JS en `"use strict"`. Ressources externes :
+- les polices Google Fonts (Sora pour les titres et chiffres, Figtree pour le texte), avec repli sur les polices système ;
+- `barcode-detector@3.2.2` (jsDelivr, IIFE `ponyfill.js`, contrôle d'intégrité `BD_SRI`), chargé à la demande au premier scan seulement si le navigateur n'a pas de `BarcodeDetector` natif (cas de Safari iOS). Il télécharge lui-même `zxing-wasm@3.1.3` (~1 Mo) depuis `fastly.jsdelivr.net`. Pour changer de version : mettre à jour `BD_URL` et recalculer `BD_SRI` (`openssl dgst -sha384 -binary ponyfill.js | openssl base64 -A`) ;
+- l'API Open Food Facts (`world.openfoodfacts.org/api/v2/product/{code}.json`), sans clé, CORS ouvert.
 
 Garder ce principe : un seul fichier HTML autonome, déployable tel quel sur un hébergement statique. N'ajouter une bibliothèque que si elle fait un vrai travail, et alors en `<script>` depuis un CDN avec version figée.
 
@@ -24,8 +27,10 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 - État global : `S` (données persistées), `view` (onglet courant), `curDate` (jour affiché, `YYYY-MM-DD` en heure locale), `draft` (repas en cours de saisie), `armedDelete` (suppression en attente de confirmation).
 - États d'interface : `openMeal` (repas déplié dans le journal), `histSel` (jour sélectionné dans le graphique d'historique). `arm(id)` arme une suppression et la désarme seule après 4 s.
 - Le journal se navigue aussi au glissement horizontal (écouteurs `touchstart`/`touchend` globaux, hors `bind()`), et un tap sur le libellé du jour ramène à aujourd'hui.
-- Photo : deux `<input type="file">` (`camInput` et `galInput`, insérés par `captureHTML()` ou `photoHTML()`). `#photocam` porte `capture="environment"` (ouvre l'appareil photo directement), `#photo` ouvre la photothèque. Les deux partagent le même gestionnaire `onPhoto`. Ne pas ajouter `capture` à `#photo`.
-- Suppression de photo : `#rmphoto` retire la photo du brouillon ; `[data-delphoto]` retire la miniature d'un repas enregistré (confirmation en deux temps, `armedDelete = "ph:" + id`).
+- Photos : un brouillon peut avoir jusqu'à `MAXP` (6) photos dans `draft.photos = [{ full, thumb }]`, toutes envoyées au modèle dans le même message. Seule la miniature de la première est enregistrée avec le repas (le schéma garde un seul `thumb`). Deux `<input type="file">` (`camInput` et `galInput`, insérés par `captureHTML()` ou `photosHTML()`) : `#photocam` porte `capture="environment"` (ouvre l'appareil photo directement), `#photo` ouvre la photothèque avec `multiple`. Les deux partagent le gestionnaire `onPhoto`. Ne pas ajouter `capture` à `#photo`.
+- Suppression de photo : `[data-rmphoto]` retire une photo du brouillon ; `[data-delphoto]` retire la miniature d'un repas enregistré (confirmation en deux temps, `armedDelete = "ph:" + id`).
+- Scanner de code-barres (`openScanner`) : superposition plein écran ajoutée à `body`, hors de `#app` et de `render()`, état dans `SC`. `getDetector()` prend le `BarcodeDetector` natif s'il lit l'EAN-13 (Chrome Android), sinon charge la bibliothèque ZXing (iOS). Lecture continue toutes les 150 ms (`tick`), un même code n'est traité qu'une fois par ouverture. Secours : saisie du code à la main et « Photo du code » (lecture sur une image). La caméra est coupée quand la page passe en arrière-plan et relancée au retour ; le bouton retour d'Android ferme le scanner (`history.pushState` + `popstate`). `getUserMedia` exige HTTPS (ou `localhost`).
+- Produits scannés : `lookupOFF(code)` renvoie un aliment `{ …, scan: true, info }` avec les valeurs Open Food Facts ramenées à la portion (`serving_quantity`, sinon 100 g), ou `null` si introuvable, ou `{ empty: true }` sans valeurs nutritionnelles. `analyse()` conserve les aliments `scan` et remplace les autres ; `callModel()` indique au modèle les produits déjà comptés. `saveMeal()` n'enregistre que `{ nom, g, kcal, p, c, f }`.
 - Design : cartes sans bordure avec `--shadow`, rayons `--radius` (26 px) et `--r-md`, dégradé `--grad`, barre du bas flottante (`nav.tabs`). La barre d'enregistrement `.savebar` est en `position:sticky` avec un `bottom` calé sur la hauteur de la barre du bas (~102 px) : si on change la hauteur de `nav.tabs`, ajuster aussi `.savebar`, `.toast` et le `padding-bottom` du `body`. L'animation d'entrée (`#app.enter`) ne se joue que dans `go()` via `animateIn()`, jamais dans `render()`.
 - Rendu : `render()` remplace entièrement `#app.innerHTML` avec la vue courante (`journalHTML`, `addHTML`, `historyHTML`, `settingsHTML`), puis appelle `bind()`, qui rattache tous les écouteurs. Tout nouvel élément interactif doit être branché dans `bind()`.
 - Exception au re-rendu complet : dans la liste d'aliments du brouillon, la saisie met à jour les champs voisins et `#totals` directement, sans `render()`, pour ne pas perdre le focus du clavier. Conserver ce comportement.
@@ -57,7 +62,7 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 ## Appel au modèle (`callModel`)
 
 - `POST {baseUrl}/chat/completions`, au format OpenAI (compatible DeepSeek et OpenRouter).
-- Message `system` : constante `SYSTEM`, en français. Message `user` : texte, plus l'image en `image_url` sous forme de data URL. DeepSeek refuse les images hors des messages `user`.
+- Message `system` : constante `SYSTEM`, en français. Il gère plusieurs photos (ne pas compter deux fois un aliment) et les étiquettes nutritionnelles photographiées (leurs valeurs priment sur les tables). Message `user` : texte, plus chaque photo en `image_url` sous forme de data URL. DeepSeek refuse les images hors des messages `user`.
 - Image envoyée : JPEG, côté le plus long 1280 px, qualité 0,85, redimensionnée côté client par `toJpeg`.
 - `response_format: { type: "json_object" }`. Le mot « JSON » doit rester dans le prompt.
 - Paramètres propres à DeepSeek, ajoutés seulement si `baseUrl` contient `deepseek.com` : `thinking: { type: "enabled" | "disabled" }` (réflexion activée par défaut côté API, d'où le `disabled` explicite), et `reasoning_effort: "high"` en mode approfondi.
@@ -93,6 +98,7 @@ sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' > /tmp/app.js && node
 
 2. Faire une capture à 390×844 avec Playwright, après avoir injecté des données de test dans `localStorage` (clé `assiette.v1`). Vérifier le journal et l'écran d'ajout.
 3. L'analyse photo ne se teste qu'avec une vraie clé API, dans un navigateur, sur l'URL déployée.
+4. Scanner sans caméra : saisir un code à la main (`3017620422003` = Nutella, `3760000000019` = introuvable), ou injecter une image d'EAN-13 dans `#scphoto`. Pour tester le chemin iOS sur Chrome, neutraliser `window.BarcodeDetector` avant le premier scan. La vraie lecture caméra ne se teste que sur téléphone, en HTTPS.
 
 ## Points connus
 
@@ -106,4 +112,3 @@ sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' > /tmp/app.js && node
 - Bouton « refaire ce repas » et repas favoris, pour ne pas ré-analyser les plats habituels.
 - Modifier un repas déjà enregistré (aujourd'hui, on ne peut que le supprimer).
 - Courbe de poids avec moyenne mobile sur 7 jours.
-- Scan de code-barres via l'API Open Food Facts.

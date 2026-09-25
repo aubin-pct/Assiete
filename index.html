@@ -23,6 +23,8 @@
   --prot:#B8472E; --carb:#B07C12; --fat:#3868A0; --danger:#C0392B;
   --shadow:0 1px 2px rgba(19,26,22,.05),0 12px 32px -16px rgba(19,26,22,.22);
   --radius:26px; --r-md:18px;
+  /* scanner plein écran : identique dans les deux thèmes, posé sur l'image de la caméra */
+  --cam-bg:#000; --cam-ink:#fff; --cam-glass:rgba(255,255,255,.16); --cam-scrim:rgba(0,0,0,.55);
   --display:"Sora", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
   --body:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme:light;
@@ -175,25 +177,58 @@ textarea{resize:vertical;min-height:76px}
 .shutter::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent2);animation:pulse 2.6s ease-out infinite;pointer-events:none}
 @keyframes pulse{from{transform:scale(1.1);opacity:.7}to{transform:scale(1.7);opacity:0}}
 .shutter svg{width:40px;height:40px}
-.shutter input,.pill input,.glass input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
-.pills{display:flex;gap:10px;width:100%;margin-top:14px}
-.pill{flex:1;position:relative;overflow:hidden;min-height:48px;border:none;border-radius:99px;background:var(--sunk);color:var(--ink);font-weight:600;font-size:.92rem;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;cursor:pointer}
-.pill svg{width:19px;height:19px}
-.photo{position:relative;overflow:hidden;border-radius:var(--radius);box-shadow:var(--shadow);aspect-ratio:4/3;background:var(--sunk)}
-.photo img{width:100%;height:100%;object-fit:cover;display:block}
-.photo .x{position:absolute;top:12px;right:12px;width:44px;height:44px;border:none;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 62%,transparent);color:var(--bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.photo .x svg{width:20px;height:20px}
-.overlay{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px}
-.glass{flex:1;position:relative;overflow:hidden;min-height:44px;border-radius:99px;background:color-mix(in srgb,var(--ink) 62%,transparent);color:var(--bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);font-weight:600;font-size:.88rem;display:flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;cursor:pointer}
-.glass svg{width:18px;height:18px}
-.photo.busy::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--accent2);box-shadow:0 0 18px 5px var(--accent2);animation:scan 1.6s ease-in-out infinite alternate;pointer-events:none}
+.shutter input,.pill input,.sc-btn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;width:100%;margin-top:14px}
+.pill{position:relative;overflow:hidden;min-height:64px;border:none;border-radius:18px;background:var(--sunk);color:var(--ink);font-weight:600;font-size:.8rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px 4px;white-space:nowrap;cursor:pointer;transition:transform .12s}
+.pill:active{transform:scale(.96)}
+.pill svg{width:22px;height:22px}
+.pill.off{opacity:.4;pointer-events:none}
+.shots{display:flex;flex-direction:column;gap:10px}
+.gallery{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{position:relative;overflow:hidden;border-radius:22px;box-shadow:var(--shadow);aspect-ratio:1;background:var(--sunk);animation:rise .35s ease-out}
+.tile:first-child:nth-last-child(odd){grid-column:span 2;aspect-ratio:4/3}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .x{position:absolute;top:10px;right:10px;width:40px;height:40px;border:none;border-radius:50%;display:grid;place-items:center;background:var(--cam-scrim);color:var(--cam-ink);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.tile .x svg{width:18px;height:18px}
+.shots .pills{margin-top:0}
+.shots .pill{background:var(--surface);box-shadow:var(--shadow)}
+.count{text-align:center;font-size:.8rem;color:var(--muted)}
+.gallery.busy .tile::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--accent2);box-shadow:0 0 18px 5px var(--accent2);animation:scan 1.6s ease-in-out infinite alternate;pointer-events:none}
 @keyframes scan{to{top:calc(100% - 3px)}}
+
+/* scanner de code-barres */
+body.noscroll{overflow:hidden}
+.scanner{position:fixed;inset:0;z-index:50;background:var(--cam-bg);color:var(--cam-ink);display:flex;flex-direction:column;animation:fadein .2s ease-out}
+@keyframes fadein{from{opacity:0}}
+.scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sc-top{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px}
+.sc-top b{font-family:var(--display);font-size:1.1rem}
+.sc-close{width:44px;height:44px;border:none;border-radius:50%;background:var(--cam-glass);color:var(--cam-ink);display:grid;place-items:center;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.sc-close svg{width:20px;height:20px}
+.sc-frame{position:relative;flex:1;display:grid;place-items:center;min-height:0}
+.sc-box{position:relative;width:min(80vw,340px);aspect-ratio:1.55;border-radius:26px;border:2px solid var(--cam-ink);box-shadow:0 0 0 100vmax var(--cam-scrim)}
+.sc-laser{position:absolute;left:8%;right:8%;top:50%;height:2px;border-radius:2px;background:var(--accent2);box-shadow:0 0 14px 3px var(--accent2);animation:laser 1.8s ease-in-out infinite alternate}
+@keyframes laser{from{top:16%}to{top:84%}}
+.scanner.idle .sc-laser{display:none}
+.sc-bottom{position:relative;display:flex;flex-direction:column;gap:10px;padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));max-width:560px;width:100%;margin:0 auto}
+.sc-msg{align-self:center;max-width:100%;text-align:center;background:var(--cam-scrim);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:10px 16px;border-radius:18px;font-weight:600;font-size:.92rem}
+.sc-msg.ok{background:var(--accent);color:var(--accent-ink)}
+.sc-msg.warn{background:var(--danger);color:var(--cam-ink)}
+.sc-list{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.sc-list span{background:var(--cam-glass);padding:5px 11px;border-radius:99px;font-size:.78rem;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-row{display:flex;gap:8px}
+.sc-row input{flex:1;min-width:0;border:none;border-radius:16px;padding:0 14px;min-height:50px;font-size:16px;background:var(--cam-glass);color:var(--cam-ink);letter-spacing:.06em;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.sc-row input::placeholder{color:var(--cam-ink);opacity:.6;letter-spacing:0}
+.sc-btn{position:relative;overflow:hidden;flex:none;border:none;border-radius:16px;min-height:50px;padding:0 16px;background:var(--cam-glass);color:var(--cam-ink);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.sc-btn svg{width:20px;height:20px}
 
 /* aliments */
 #items{display:flex;flex-direction:column;gap:12px}
 .item{display:flex;flex-direction:column;gap:10px;background:var(--surface);border-radius:22px;box-shadow:var(--shadow);padding:14px}
 .item .head{display:flex;gap:8px;align-items:center}
 .item .head input{flex:1;font-weight:600}
+.item .src{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;color:var(--accent)}
+.item .src svg{width:16px;height:16px}
 .item .head .iconbtn{width:44px;height:44px;border-radius:50%;border:none;background:var(--sunk);display:grid;place-items:center;flex:none;color:var(--muted)}
 .item .head .iconbtn svg{width:18px;height:18px}
 .item .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -332,6 +367,7 @@ const XI = ic(`<path d="M6 6l12 12M18 6L6 18"/>`, 2.2);
 const PLATE = ic(`<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>`, 1.5);
 const CHEV = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
 const LEFT = ic(`<path d="M15 5l-7 7 7 7"/>`, 2.2), RIGHT = ic(`<path d="M9 5l7 7-7 7"/>`, 2.2);
+const BAR = ic(`<path d="M3 7V5a1 1 0 0 1 1-1h2M18 4h2a1 1 0 0 1 1 1v2M21 17v2a1 1 0 0 1-1 1h-2M6 20H4a1 1 0 0 1-1-1v-2"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8M15 8v5"/>`);
 
 /* ---------- state ---------- */
 let view = "journal";
@@ -340,7 +376,9 @@ let draft = newDraft();
 let armedDelete = null, armT;
 let openMeal = null;   // repas déplié dans le journal
 let histSel = null;    // jour sélectionné dans le graphique d'historique
-function newDraft(){ return { photo:null, thumb:null, note:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
+const MAXP = 6;         // photos max par repas
+// photos : [{ full, thumb }] ; seule la miniature de la première est enregistrée avec le repas
+function newDraft(){ return { photos:[], note:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
 function arm(id){
   armedDelete = id; clearTimeout(armT);
   armT = setTimeout(() => { if (armedDelete === id){ armedDelete = null; render(); } }, 4000);
@@ -425,6 +463,7 @@ const TYPES = ["Petit-déjeuner","Déjeuner","Collation","Dîner"];
 function itemHTML(it, i){
   const f = (k, lbl, step) => `<label>${lbl}<input type="number" inputmode="decimal" step="${step}" min="0" id="it-${i}-${k}" data-i="${i}" data-k="${k}" value="${it[k] ? r0(it[k]*10)/10 : ""}"></label>`;
   return `<div class="item">
+    ${it.info ? `<div class="src">${BAR}${esc(it.info)}</div>` : ""}
     <div class="head"><input type="text" id="it-${i}-nom" data-i="${i}" data-k="nom" value="${esc(it.nom)}" placeholder="Aliment" aria-label="Nom de l'aliment">
       <button class="iconbtn" data-rm="${i}" aria-label="Retirer cet aliment">${XI}</button></div>
     <div class="grid">${f("g","Grammes","1")}${f("kcal","kcal","1")}${f("p","Prot.","0.1")}${f("c","Gluc.","0.1")}${f("f","Lip.","0.1")}</div>
@@ -435,23 +474,31 @@ function totalsHTML(){
   return `<span><b>${fmt(t.kcal)}</b> kcal</span><span style="color:var(--prot)">P ${fmt(t.p)} g</span><span style="color:var(--carb)">G ${fmt(t.c)} g</span><span style="color:var(--fat)">L ${fmt(t.f)} g</span>`;
 }
 const SHORT = { "Petit-déjeuner":"Petit-déj.", "Déjeuner":"Déjeuner", "Collation":"Collation", "Dîner":"Dîner" };
-const canAnalyse = () => !draft.loading && !!S.settings.apiKey && !!(draft.photo || draft.note.trim());
-// `capture` ouvre directement l'appareil photo arrière ; l'autre entrée ouvre la photothèque
+const canAnalyse = () => !draft.loading && !!S.settings.apiKey && !!(draft.photos.length || draft.note.trim());
+// `capture` ouvre directement l'appareil photo arrière ; l'autre entrée ouvre la photothèque (plusieurs photos d'un coup)
 const camInput = `<input type="file" id="photocam" accept="image/*" capture="environment">`;
-const galInput = `<input type="file" id="photo" accept="image/*">`;
+const galInput = `<input type="file" id="photo" accept="image/*" multiple>`;
 function captureHTML(showManual){
   return `<section class="cap">
     <label class="shutter" aria-label="Prendre une photo">${CAM}${camInput}</label>
     <b class="captitle">Photographie ton assiette</b>
-    <span class="muted small">L'IA estime les aliments, les grammes et les macros.</span>
-    <div class="pills"><label class="pill">${IMG}Galerie${galInput}</label>${showManual ? `<button class="pill" id="manual">${PEN}Saisie manuelle</button>` : ""}</div>
+    <span class="muted small">Plusieurs photos possibles : plat, dessert, boisson, étiquette.</span>
+    <div class="pills"><label class="pill">${IMG}Galerie${galInput}</label>
+      <button class="pill" id="scan">${BAR}Code-barres</button>
+      ${showManual ? `<button class="pill" id="manual">${PEN}À la main</button>` : ""}</div>
   </section>`;
 }
-function photoHTML(){
-  const d = draft;
-  return `<div class="photo${d.loading ? " busy" : ""}"><img src="${d.photo}" alt="Photo du repas">
-    ${d.loading ? "" : `<button class="x" id="rmphoto" aria-label="Retirer la photo">${XI}</button>
-    <div class="overlay"><label class="glass">${CAM}Reprendre${camInput}</label><label class="glass">${IMG}Galerie${galInput}</label></div>`}</div>`;
+function photosHTML(){
+  const d = draft, full = d.photos.length >= MAXP;
+  return `<section class="shots">
+    <div class="gallery${d.loading ? " busy" : ""}">${d.photos.map((p, i) => `<div class="tile"><img src="${p.full}" alt="Photo ${i+1} du repas">
+      ${d.loading ? "" : `<button class="x" data-rmphoto="${i}" aria-label="Retirer la photo ${i+1}">${XI}</button>`}</div>`).join("")}</div>
+    ${d.loading ? "" : `<div class="pills">
+      <label class="pill${full ? " off" : ""}">${CAM}Photo${full ? "" : camInput}</label>
+      <label class="pill${full ? " off" : ""}">${IMG}Galerie${full ? "" : galInput}</label>
+      <button class="pill" id="scan">${BAR}Code-barres</button></div>
+    <div class="count">${d.photos.length} photo${d.photos.length > 1 ? "s" : ""} sur ${MAXP} maximum</div>`}
+  </section>`;
 }
 function addHTML(){
   const d = draft;
@@ -472,7 +519,7 @@ function addHTML(){
   return `
   <div class="top"><div><div class="title">Nouveau repas</div><div class="sub">Pour ${esc(dayLabel(curDate).toLowerCase())}</div></div></div>
   ${noKey ? `<div class="note">Pour l'analyse photo, il faut une clé API. <button class="link" data-go="settings">Ouvrir les Réglages</button>. La saisie manuelle marche sans clé.</div>` : ""}
-  ${d.photo ? photoHTML() : captureHTML(showManual)}
+  ${d.photos.length ? photosHTML() : captureHTML(showManual)}
   <section class="card">
     <div class="fl">Type de repas
       <div class="seg" role="radiogroup" aria-label="Type de repas">${TYPES.map(t => `<button type="button" role="radio" aria-checked="${t === d.type}" data-type="${t}">${SHORT[t]}</button>`).join("")}</div></div>
@@ -481,9 +528,9 @@ function addHTML(){
     ${d.error ? `<div class="err" role="alert">${esc(d.error)}</div>` : ""}
     <button class="btn" id="analyse" ${canAnalyse() ? "" : "disabled"}>${d.loading ? `<span class="spinner"></span>Analyse en cours` : `${SPARK}${d.analysed ? "Réanalyser" : "Analyser mon repas"}`}</button>
     ${d.loading ? `<div class="muted small" role="status" style="text-align:center">${S.settings.deep ? "Analyse approfondie : compte jusqu'à une minute." : "L'IA regarde ton assiette, quelques secondes."}</div>` : ""}
-    ${!d.loading && !noKey && !d.analysed ? `<div class="muted small" id="ahint" style="text-align:center" ${d.photo || d.note.trim() ? "hidden" : ""}>Ajoute une photo ou une description pour lancer l'analyse.</div>` : ""}
-    ${d.photo && showManual ? `<button class="btn ghost sm" id="manual">${PEN}Saisir à la main</button>` : ""}
-    ${d.photo || d.items.length ? `<button class="textbtn" id="reset">Tout recommencer</button>` : ""}
+    ${!d.loading && !noKey && !d.analysed && !d.items.length ? `<div class="muted small" id="ahint" style="text-align:center" ${d.photos.length || d.note.trim() ? "hidden" : ""}>Ajoute une photo ou une description pour lancer l'analyse.</div>` : ""}
+    ${d.photos.length && showManual ? `<button class="btn ghost sm" id="manual">${PEN}Saisir à la main</button>` : ""}
+    ${d.photos.length || d.items.length ? `<button class="textbtn" id="reset">Tout recommencer</button>` : ""}
   </section>
   ${result}`;
 }
@@ -506,7 +553,9 @@ function toJpeg(img, max, q, square){
   return c.toDataURL("image/jpeg", q);
 }
 
-const SYSTEM = `Tu es un nutritionniste. Tu estimes le contenu d'un repas à partir d'une photo et/ou d'une description.
+const SYSTEM = `Tu es un nutritionniste. Tu estimes le contenu d'un repas à partir d'une ou plusieurs photos et/ou d'une description.
+Plusieurs photos montrent le même repas (angles différents, autre plat, dessert, boisson) : ne compte jamais deux fois un aliment visible sur plusieurs photos.
+Si une photo montre une étiquette ou un tableau de valeurs nutritionnelles, utilise ces valeurs pour 100 g plutôt que les tables, et estime la quantité consommée.
 Identifie chaque aliment visible. Estime sa masse en grammes telle que servie (poids cuit si l'aliment est cuit), en t'aidant des repères de taille : assiette plate d'environ 26 cm, couverts, mains, emballages.
 Donne ensuite ses calories et macronutriments à partir de valeurs de tables de composition classiques (type Ciqual).
 Pense aux matières grasses de cuisson, sauces, assaisonnements et boissons : ajoute-les comme éléments séparés s'ils sont vraisemblables.
@@ -519,9 +568,13 @@ async function callModel(){
   const st = S.settings;
   const base = (st.baseUrl || "https://api.deepseek.com").replace(/\/+$/, "");
   const isDeepSeek = /deepseek\.com/.test(base);
-  const userText = (draft.note ? "Précisions de l'utilisateur : " + draft.note + "\n" : "") + `Type de repas : ${draft.type}. Analyse ce repas et réponds en JSON.`;
-  const content = draft.photo
-    ? [{ type:"text", text:userText }, { type:"image_url", image_url:{ url:draft.photo } }]
+  const scanned = draft.items.filter(i => i.scan);
+  const userText = (draft.note ? "Précisions de l'utilisateur : " + draft.note + "\n" : "")
+    + (scanned.length ? "Déjà comptés grâce au code-barres, ne les ajoute pas : " + scanned.map(i => i.nom).join(" ; ") + ".\n" : "")
+    + (draft.photos.length > 1 ? `${draft.photos.length} photos du même repas.\n` : "")
+    + `Type de repas : ${draft.type}. Analyse ce repas et réponds en JSON.`;
+  const content = draft.photos.length
+    ? [{ type:"text", text:userText }, ...draft.photos.map(p => ({ type:"image_url", image_url:{ url:p.full } }))]
     : userText;
   const body = { model: st.model || "deepseek-flash", messages:[{ role:"system", content:SYSTEM }, { role:"user", content }],
                  stream:false, max_tokens: st.deep ? 6000 : 1800, response_format:{ type:"json_object" } };
@@ -566,29 +619,209 @@ function normItem(x){
 function setRatio(it){ it.ratio = it.g > 0 ? { kcal: it.kcal/it.g, p: it.p/it.g, c: it.c/it.g, f: it.f/it.g } : null; }
 
 async function analyse(){
-  if (!draft.photo && !draft.note.trim()){ toast("Ajoute une photo ou une description."); return; }
+  if (!draft.photos.length && !draft.note.trim()){ toast("Ajoute une photo ou une description."); return; }
   draft.loading = true; draft.error = ""; render();
   try {
     const j = await callModel();
-    draft.items = Array.isArray(j.items) ? j.items.map(normItem) : [];
+    const found = Array.isArray(j.items) ? j.items.map(normItem) : [];
+    // les produits scannés restent ; le reste est remplacé par la nouvelle analyse
+    draft.items = draft.items.filter(i => i.scan).concat(found);
     draft.name = j.plat || draft.name; draft.hyp = j.hypotheses || ""; draft.conf = j.confiance || "";
     draft.analysed = true;
-    if (!draft.items.length) draft.error = "Aucun aliment détecté. Ajoute des précisions ou saisis à la main.";
+    if (!found.length) draft.error = "Aucun aliment détecté. Ajoute des précisions ou saisis à la main.";
   } catch(e){ draft.error = e.message; }
   draft.loading = false; render();
   if (draft.items.length) document.getElementById("items")?.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 
 function saveMeal(){
-  const items = draft.items.filter(i => i.nom.trim() || i.kcal).map(({ratio, ...rest}) => rest);
+  const items = draft.items.filter(i => i.nom.trim() || i.kcal).map(({ nom, g, kcal, p, c, f }) => ({ nom, g, kcal, p, c, f }));
   if (!items.length){ toast("Ajoute au moins un aliment."); return; }
   const now = new Date();
   S.meals.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), date: curDate,
     time: String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0"),
-    type: draft.type, name: draft.name.trim(), items, thumb: draft.thumb });
+    type: draft.type, name: draft.name.trim(), items, thumb: draft.photos[0]?.thumb || null });
   if (!save()){ S.meals.pop(); return; }
   draft = newDraft(); toast("Repas ajouté"); go("journal");
 }
+
+/* ---------- code-barres ---------- */
+// Chrome Android a un lecteur intégré (BarcodeDetector). Safari iOS non : on charge alors
+// la même API en version ZXing/WebAssembly, seulement au premier scan.
+const BD_URL = "https://cdn.jsdelivr.net/npm/barcode-detector@3.2.2/dist/iife/ponyfill.js";
+const BD_SRI = "sha384-KJVUIUGb4pmfpWXfD8j3y9ARn6KoGC2vPC/wNUX1O1ZkYemh0BsuvsmdEU2+wS7O";
+const FORMATS = ["ean_13","ean_8","upc_a","upc_e"];
+let detectorP = null;
+function loadScript(src, integrity){
+  return new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = src; s.integrity = integrity; s.crossOrigin = "anonymous";
+    s.onload = res; s.onerror = () => { s.remove(); rej(new Error("load")); };
+    document.head.appendChild(s);
+  });
+}
+function getDetector(){
+  if (!detectorP) detectorP = (async () => {
+    if ("BarcodeDetector" in window){
+      try { const f = await window.BarcodeDetector.getSupportedFormats(); if (f.includes("ean_13")) return new window.BarcodeDetector({ formats: FORMATS }); } catch(e){}
+    }
+    if (!window.BarcodeDetectionAPI) await loadScript(BD_URL, BD_SRI);
+    return new window.BarcodeDetectionAPI.BarcodeDetector({ formats: FORMATS });
+  })().catch(e => { detectorP = null; throw new Error("Lecteur de code-barres non chargé. Vérifie ta connexion, ou tape le code."); });
+  return detectorP;
+}
+
+async function lookupOFF(code){
+  let r;
+  try { r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_fr,generic_name_fr,brands,nutriments,serving_quantity`); }
+  catch(e){ throw new Error("Open Food Facts injoignable. Vérifie ta connexion."); }
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`Open Food Facts indisponible (erreur ${r.status}). Réessaie dans un instant.`);
+  const j = await r.json();
+  if (j.status !== 1 || !j.product) return null;
+  const p = j.product, n = p.nutriments || {};
+  const name = String(p.product_name_fr || p.product_name || p.generic_name_fr || "").trim();
+  const brand = String(p.brands || "").split(",")[0].trim();
+  // marque ajoutée seulement si elle apporte quelque chose (pas « Coca-Cola · COCA-COLA SERVICES SA/NV »)
+  const key = s => s.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
+  const same = name && brand && (key(brand).includes(key(name)) || key(name).includes(key(brand).slice(0, 6)));
+  const nom = name && brand && !same && brand.length <= 24 ? `${name} · ${brand}` : (name || brand || `Produit ${code}`);
+  const k100 = num(n["energy-kcal_100g"]) || num(n.energy_100g) / 4.184;
+  const per = { kcal:k100, p:num(n.proteins_100g), c:num(n.carbohydrates_100g), f:num(n.fat_100g) };
+  if (!per.kcal && !per.p && !per.c && !per.f) return { nom, empty:true };
+  const portion = num(p.serving_quantity), g = portion || 100;
+  const it = { nom, g, kcal:per.kcal*g/100, p:per.p*g/100, c:per.c*g/100, f:per.f*g/100, scan:true,
+    info:`Code-barres · ${fmt(per.kcal)} kcal pour 100 g${portion ? ` · portion ${fmt(portion)} g` : ""}` };
+  setRatio(it); return it;
+}
+
+let SC = null;   // scanner ouvert : { stream, det, seen, added, busy, timer }
+function scannerHTML(){
+  return `<div class="scanner idle" id="scanner" role="dialog" aria-modal="true" aria-label="Scanner un code-barres">
+    <video id="scvideo" playsinline muted autoplay></video>
+    <div class="sc-top"><b>Code-barres</b><button class="sc-close" id="scclose" aria-label="Fermer le scanner">${XI}</button></div>
+    <div class="sc-frame"><div class="sc-box"><i class="sc-laser"></i></div></div>
+    <div class="sc-bottom">
+      <div class="sc-msg" id="scmsg" role="status">Démarrage de la caméra…</div>
+      <div class="sc-list" id="sclist"></div>
+      <form class="sc-row" id="scform"><input id="sccode" inputmode="numeric" autocomplete="off" pattern="[0-9]*" placeholder="Ou tape le code (8 à 14 chiffres)" aria-label="Code-barres">
+        <button class="sc-btn" type="submit">OK</button></form>
+      <div class="sc-row"><label class="sc-btn" style="flex:1">${CAM}Photo du code<input type="file" id="scphoto" accept="image/*" capture="environment"></label>
+        <button class="btn" id="scdone" style="flex:1">Terminé</button></div>
+    </div></div>`;
+}
+function scMsg(text, kind){
+  const m = $("#scmsg"); if (!m) return;
+  m.textContent = text; m.className = "sc-msg" + (kind ? " " + kind : "");
+}
+function scList(){
+  const l = $("#sclist"); if (!l || !SC) return;
+  l.innerHTML = SC.added.map(n => `<span>${esc(n)}</span>`).join("");
+  const d = $("#scdone"); if (d) d.textContent = SC.added.length ? `Terminé · ${SC.added.length}` : "Terminé";
+}
+function stopCamera(me){
+  clearTimeout(me.timer);
+  if (me.stream) me.stream.getTracks().forEach(t => t.stop());
+  me.stream = null;
+}
+async function openScanner(){
+  if (SC) return;
+  const me = SC = { stream:null, det:null, seen:new Set(), added:[], busy:false, timer:0 };
+  document.body.insertAdjacentHTML("beforeend", scannerHTML());
+  document.body.classList.add("noscroll");
+  history.pushState({ scanner:true }, "");
+  $("#scclose").addEventListener("click", () => closeScanner());
+  $("#scdone").addEventListener("click", () => closeScanner());
+  $("#scform").addEventListener("submit", e => {
+    e.preventDefault();
+    const code = $("#sccode").value.replace(/\D/g, "");
+    if (code.length < 8 || code.length > 14){ scMsg("Un code-barres fait 8 à 14 chiffres.", "warn"); return; }
+    $("#sccode").value = ""; $("#sccode").blur(); me.seen.delete(code); onCode(me, code);
+  });
+  $("#scphoto").addEventListener("change", async e => {
+    const file = e.target.files && e.target.files[0]; e.target.value = ""; if (!file) return;
+    scMsg("Lecture de la photo…");
+    try {
+      const det = me.det || (me.det = await getDetector()), img = await loadImage(file);
+      const code = (await det.detect(img)).map(b => b.rawValue).find(v => /^\d{8,14}$/.test(v));
+      if (SC !== me) return;
+      if (code){ me.seen.delete(code); onCode(me, code); }
+      else scMsg("Aucun code-barres lu. Rapproche-toi, évite les reflets, ou tape le code.", "warn");
+    } catch(err){ if (SC === me) scMsg(err.message, "warn"); }
+  });
+
+  startCamera(me);
+}
+async function startCamera(me){
+  const detP = getDetector().then(d => me.det = d);
+  if (!navigator.mediaDevices?.getUserMedia){
+    scMsg("Caméra indisponible ici (il faut une page en HTTPS). Prends le code en photo ou tape-le.", "warn"); return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:false,
+      video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } } });
+    if (SC !== me){ stream.getTracks().forEach(t => t.stop()); return; }
+    me.stream = stream;
+    const v = $("#scvideo"); v.srcObject = stream; await v.play().catch(() => {});
+  } catch(e){
+    if (SC === me) scMsg(e.name === "NotAllowedError"
+      ? "Accès à la caméra refusé. Autorise-le dans les réglages du navigateur, ou tape le code."
+      : "Impossible d'ouvrir la caméra. Prends le code en photo ou tape-le.", "warn");
+    return;
+  }
+  try { await detP; } catch(e){ if (SC === me) scMsg(e.message, "warn"); return; }
+  if (SC !== me || !me.stream) return;
+  $("#scanner").classList.remove("idle");
+  if (!me.added.length) scMsg("Place le code-barres dans le cadre");
+  clearTimeout(me.timer); tick(me);
+}
+async function tick(me){
+  if (SC !== me) return;
+  const v = $("#scvideo");
+  if (!me.busy && v && v.readyState >= 2){
+    try {
+      const code = (await me.det.detect(v)).map(b => b.rawValue).find(x => /^\d{8,14}$/.test(x));
+      if (code && SC === me && !me.seen.has(code)) await onCode(me, code);
+    } catch(e){}
+  }
+  if (SC === me && me.stream) me.timer = setTimeout(() => tick(me), 150);
+}
+async function onCode(me, code){
+  me.seen.add(code); me.busy = true;
+  try { navigator.vibrate && navigator.vibrate(40); } catch(e){}
+  scMsg(`Recherche du produit ${code}…`);
+  try {
+    const it = await lookupOFF(code);
+    if (SC !== me) return;
+    if (!it) scMsg(`Produit ${code} introuvable. Prends son étiquette en photo, puis lance l'analyse.`, "warn");
+    else if (it.empty) scMsg(`${it.nom} : pas de valeurs nutritionnelles connues. Photographie l'étiquette.`, "warn");
+    else {
+      draft.items.push(it);
+      if (!draft.name.trim()) draft.name = it.nom;
+      me.added.push(it.nom); scList(); render();
+      scMsg(`Ajouté : ${it.nom}`, "ok");
+    }
+  } catch(e){ if (SC === me){ me.seen.delete(code); scMsg(e.message, "warn"); } }
+  finally { me.busy = false; }
+}
+function closeScanner(fromHistory){
+  const me = SC; if (!me) return;
+  SC = null; stopCamera(me);
+  $("#scanner")?.remove(); document.body.classList.remove("noscroll");
+  if (!fromHistory && history.state && history.state.scanner) history.back();
+  if (me.added.length){
+    toast(me.added.length > 1 ? `${me.added.length} produits ajoutés` : "Produit ajouté");
+    setTimeout(() => document.getElementById("items")?.scrollIntoView({ behavior:"smooth", block:"start" }), 50);
+  }
+}
+// bouton retour d'Android : ferme le scanner au lieu de quitter l'appli
+window.addEventListener("popstate", () => { if (SC) closeScanner(true); });
+// en arrière-plan (autre appli, appareil photo du système pour « Photo du code ») :
+// on coupe la caméra et on la relance au retour, sans fermer le scanner
+document.addEventListener("visibilitychange", () => {
+  const me = SC; if (!me) return;
+  if (document.hidden){ if (me.stream){ stopCamera(me); me.paused = true; $("#scanner")?.classList.add("idle"); } }
+  else if (me.paused){ me.paused = false; startCamera(me); }
+});
 
 /* ---------- history ---------- */
 const kg1 = n => n.toLocaleString("fr-FR", { minimumFractionDigits:1, maximumFractionDigits:1 });
@@ -708,19 +941,27 @@ function bind(){
   }));
   // add
   const onPhoto = async e => {
-    const file = e.target.files && e.target.files[0]; if (!file) return;
-    try { const img = await loadImage(file);
-      draft.photo = toJpeg(img, 1280, 0.85, false); draft.thumb = toJpeg(img, 160, 0.7, true);
-      draft.error = ""; render();
-    } catch(err){ draft.error = err.message; render(); }
+    const files = [...(e.target.files || [])]; if (!files.length) return;
+    const room = MAXP - draft.photos.length;
+    draft.error = "";
+    if (files.length > room) toast(`${MAXP} photos maximum : ${files.length - room > 1 ? "les dernières sont ignorées" : "la dernière est ignorée"}.`);
+    for (const file of files.slice(0, room)){
+      try { const img = await loadImage(file);
+        draft.photos.push({ full: toJpeg(img, 1280, 0.85, false), thumb: toJpeg(img, 160, 0.7, true) });
+      } catch(err){ draft.error = err.message; }
+    }
+    render();
   };
   on("#photo","change", onPhoto);
   on("#photocam","change", onPhoto);
-  on("#rmphoto","click", () => { draft.photo = null; draft.thumb = null; draft.error = ""; render(); });
+  document.querySelectorAll("[data-rmphoto]").forEach(b => b.addEventListener("click", () => {
+    draft.photos.splice(+b.dataset.rmphoto, 1); draft.error = ""; render();
+  }));
+  on("#scan","click", openScanner);
   on("#note","input", e => {
     draft.note = e.target.value;
     const b = $("#analyse"); if (b) b.disabled = !canAnalyse();
-    const h = $("#ahint"); if (h) h.hidden = !!(draft.photo || draft.note.trim());
+    const h = $("#ahint"); if (h) h.hidden = !!(draft.photos.length || draft.note.trim());
   });
   document.querySelectorAll("[data-type]").forEach(b => b.addEventListener("click", () => {
     draft.type = b.dataset.type;
