@@ -215,12 +215,27 @@ body.noscroll{overflow:hidden}
 .sc-msg.ok{background:var(--accent);color:var(--accent-ink)}
 .sc-msg.warn{background:var(--danger);color:var(--cam-ink)}
 .sc-list{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
-.sc-list span{background:var(--cam-glass);padding:5px 11px;border-radius:99px;font-size:.78rem;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-list{max-height:92px;overflow-y:auto}
+.sc-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:36px;border:none;background:var(--cam-glass);color:var(--cam-ink);padding:0 8px 0 13px;border-radius:99px;font-size:.8rem;font-weight:600;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.sc-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-chip svg{width:15px;height:15px;opacity:.8}
 .sc-row{display:flex;gap:8px}
 .sc-row input{flex:1;min-width:0;border:none;border-radius:16px;padding:0 14px;min-height:50px;font-size:16px;background:var(--cam-glass);color:var(--cam-ink);letter-spacing:.06em;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 .sc-row input::placeholder{color:var(--cam-ink);opacity:.6;letter-spacing:0}
 .sc-btn{position:relative;overflow:hidden;flex:none;border:none;border-radius:16px;min-height:50px;padding:0 16px;background:var(--cam-glass);color:var(--cam-ink);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 .sc-btn svg{width:20px;height:20px}
+
+/* produits scannés */
+.sect2{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.prods{display:flex;flex-direction:column;gap:8px}
+.prod{display:grid;grid-template-columns:44px 1fr 40px;gap:12px;align-items:center;background:var(--sunk);border-radius:18px;padding:10px;animation:rise .3s ease-out}
+.pic{width:44px;height:44px;border-radius:14px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.pic svg{width:22px;height:22px}
+.pmain{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.pmain b{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.pmain .link{font-size:.85rem;margin-top:4px}
+.rmbtn{width:40px;height:40px;border:none;border-radius:50%;background:var(--surface);color:var(--muted);display:grid;place-items:center}
+.rmbtn svg{width:16px;height:16px}
 
 /* aliments */
 #items{display:flex;flex-direction:column;gap:12px}
@@ -378,7 +393,8 @@ let openMeal = null;   // repas déplié dans le journal
 let histSel = null;    // jour sélectionné dans le graphique d'historique
 const MAXP = 6;         // photos max par repas
 // photos : [{ full, thumb }] ; seule la miniature de la première est enregistrée avec le repas
-function newDraft(){ return { photos:[], note:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
+// products : produits scannés { code, nom, per:{kcal,p,c,f} pour 100 g, portion, used } ; envoyés à l'IA comme référence
+function newDraft(){ return { photos:[], products:[], note:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
 function arm(id){
   armedDelete = id; clearTimeout(armT);
   armT = setTimeout(() => { if (armedDelete === id){ armedDelete = null; render(); } }, 4000);
@@ -474,7 +490,23 @@ function totalsHTML(){
   return `<span><b>${fmt(t.kcal)}</b> kcal</span><span style="color:var(--prot)">P ${fmt(t.p)} g</span><span style="color:var(--carb)">G ${fmt(t.c)} g</span><span style="color:var(--fat)">L ${fmt(t.f)} g</span>`;
 }
 const SHORT = { "Petit-déjeuner":"Petit-déj.", "Déjeuner":"Déjeuner", "Collation":"Collation", "Dîner":"Dîner" };
-const canAnalyse = () => !draft.loading && !!S.settings.apiKey && !!(draft.photos.length || draft.note.trim());
+const canAnalyse = () => !draft.loading && !!S.settings.apiKey && !!(draft.photos.length || draft.products.length || draft.note.trim());
+const d1 = n => (Math.round(n*10)/10).toLocaleString("fr-FR");
+const perTxt = pr => `${fmt(pr.per.kcal)} kcal · P ${d1(pr.per.p)} · G ${d1(pr.per.c)} · L ${d1(pr.per.f)}`;
+function productsHTML(){
+  const d = draft; if (!d.products.length) return "";
+  const noKey = !S.settings.apiKey;
+  return `<section class="card" id="prods">
+    <div class="sect2"><h2>Produits scannés</h2><span class="muted small">pour 100 g</span></div>
+    <div class="prods">${d.products.map((pr, i) => `<div class="prod">
+      <div class="pic">${BAR}</div>
+      <div class="pmain"><b>${esc(pr.nom)}</b><div class="muted small num">${perTxt(pr)}</div>
+        ${noKey ? `<button class="link" data-direct="${i}">Ajouter tel quel · ${fmt(pr.portion || 100)} g</button>` : ""}</div>
+      <button class="rmbtn" data-rmprod="${i}" aria-label="Retirer ${esc(pr.nom)}">${XI}</button></div>`).join("")}</div>
+    <div class="muted small">${noKey ? "Sans clé API, ajoute chaque produit tel quel puis ajuste les grammes."
+      : "L'IA utilise ces valeurs exactes. Dis-lui combien tu en as mangé dans « Quantités et précisions », par exemple « 300 g de riz cuit »."}</div>
+  </section>`;
+}
 // `capture` ouvre directement l'appareil photo arrière ; l'autre entrée ouvre la photothèque (plusieurs photos d'un coup)
 const camInput = `<input type="file" id="photocam" accept="image/*" capture="environment">`;
 const galInput = `<input type="file" id="photo" accept="image/*" multiple>`;
@@ -520,17 +552,19 @@ function addHTML(){
   <div class="top"><div><div class="title">Nouveau repas</div><div class="sub">Pour ${esc(dayLabel(curDate).toLowerCase())}</div></div></div>
   ${noKey ? `<div class="note">Pour l'analyse photo, il faut une clé API. <button class="link" data-go="settings">Ouvrir les Réglages</button>. La saisie manuelle marche sans clé.</div>` : ""}
   ${d.photos.length ? photosHTML() : captureHTML(showManual)}
+  ${productsHTML()}
   <section class="card">
     <div class="fl">Type de repas
       <div class="seg" role="radiogroup" aria-label="Type de repas">${TYPES.map(t => `<button type="button" role="radio" aria-checked="${t === d.type}" data-type="${t}">${SHORT[t]}</button>`).join("")}</div></div>
-    <label class="f">Précisions (facultatif)<textarea id="note" placeholder="ex. 1 c. à s. d'huile d'olive, 200 g de riz cuit, sauce soja">${esc(d.note)}</textarea></label>
+    <label class="f">Quantités et précisions${d.products.length && !d.photos.length ? "" : " (facultatif)"}<textarea id="note" placeholder="ex. 300 g de riz cuit, 1 c. à s. d'huile d'olive, un yaourt entier">${esc(d.note)}</textarea></label>
     <label class="switch"><span>Analyse approfondie<small>Plus lente, un peu plus précise</small></span><input type="checkbox" id="deep" ${S.settings.deep ? "checked" : ""}></label>
     ${d.error ? `<div class="err" role="alert">${esc(d.error)}</div>` : ""}
     <button class="btn" id="analyse" ${canAnalyse() ? "" : "disabled"}>${d.loading ? `<span class="spinner"></span>Analyse en cours` : `${SPARK}${d.analysed ? "Réanalyser" : "Analyser mon repas"}`}</button>
     ${d.loading ? `<div class="muted small" role="status" style="text-align:center">${S.settings.deep ? "Analyse approfondie : compte jusqu'à une minute." : "L'IA regarde ton assiette, quelques secondes."}</div>` : ""}
-    ${!d.loading && !noKey && !d.analysed && !d.items.length ? `<div class="muted small" id="ahint" style="text-align:center" ${d.photos.length || d.note.trim() ? "hidden" : ""}>Ajoute une photo ou une description pour lancer l'analyse.</div>` : ""}
-    ${d.photos.length && showManual ? `<button class="btn ghost sm" id="manual">${PEN}Saisir à la main</button>` : ""}
-    ${d.photos.length || d.items.length ? `<button class="textbtn" id="reset">Tout recommencer</button>` : ""}
+    ${!d.loading && !noKey && !d.analysed && !d.items.length ? `<div class="muted small" id="ahint" style="text-align:center" ${d.photos.length || d.products.length || d.note.trim() ? "hidden" : ""}>Ajoute une photo, scanne un produit ou décris ton repas pour lancer l'analyse.</div>` : ""}
+    ${!d.loading && d.analysed && d.products.some(p => !p.used) ? `<div class="note" role="status">Nouveau produit scanné : relance l'analyse pour le compter.</div>` : ""}
+    ${(d.photos.length || d.products.length) && showManual ? `<button class="btn ghost sm" id="manual">${PEN}Saisir à la main</button>` : ""}
+    ${d.photos.length || d.products.length || d.items.length ? `<button class="textbtn" id="reset">Tout recommencer</button>` : ""}
   </section>
   ${result}`;
 }
@@ -560,18 +594,26 @@ Identifie chaque aliment visible. Estime sa masse en grammes telle que servie (p
 Donne ensuite ses calories et macronutriments à partir de valeurs de tables de composition classiques (type Ciqual).
 Pense aux matières grasses de cuisson, sauces, assaisonnements et boissons : ajoute-les comme éléments séparés s'ils sont vraisemblables.
 Si l'utilisateur donne des quantités ou des précisions, elles priment sur ton estimation visuelle.
+L'utilisateur peut avoir scanné des produits emballés, listés avec leur code-barres et leurs valeurs officielles pour 100 g du produit tel que vendu. Il les a mangés : chacun doit apparaître une fois dans "items", même sans photo, avec son "code" et ces valeurs exactes (jamais celles des tables).
+Pour un produit scanné, "grammes" est le poids du produit tel que vendu (souvent sec ou cru). Si l'utilisateur donne le poids servi d'un produit qui se cuit (ex. « 300 g de riz » dans l'assiette), convertis-le en poids tel que vendu (riz, pâtes, semoule : poids cuit divisé par 2,5 à 3 environ) et explique la conversion dans "hypotheses". Sans quantité ni photo exploitable, prends la portion indiquée ou une portion habituelle.
+Un aliment de la photo qui correspond à un produit scanné n'est compté qu'une fois, sous le produit scanné.
 Réponds uniquement avec un objet JSON valide, sans texte autour, de la forme :
-{"plat": "nom court du repas", "items": [{"nom": "string", "grammes": 0, "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0}], "hypotheses": "une ou deux phrases sur ce qui est incertain", "confiance": "faible" | "moyenne" | "haute"}
-Les nombres sont sans unités. Si l'image ne montre pas de nourriture, renvoie "items": [] et explique pourquoi dans "hypotheses".`;
+{"plat": "nom court du repas", "items": [{"nom": "string", "grammes": 0, "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0, "code": "code-barres, uniquement pour un produit scanné"}], "hypotheses": "une ou deux phrases sur ce qui est incertain", "confiance": "faible" | "moyenne" | "haute"}
+Les nombres sont sans unités. Si rien ne montre de nourriture et qu'aucun produit n'est scanné, renvoie "items": [] et explique pourquoi dans "hypotheses".`;
 
 async function callModel(){
   const st = S.settings;
   const base = (st.baseUrl || "https://api.deepseek.com").replace(/\/+$/, "");
   const isDeepSeek = /deepseek\.com/.test(base);
-  const scanned = draft.items.filter(i => i.scan);
-  const userText = (draft.note ? "Précisions de l'utilisateur : " + draft.note + "\n" : "")
-    + (scanned.length ? "Déjà comptés grâce au code-barres, ne les ajoute pas : " + scanned.map(i => i.nom).join(" ; ") + ".\n" : "")
+  const direct = draft.items.filter(i => i.scan);
+  const r1 = n => Math.round(n*10)/10;
+  const userText = (draft.note ? "Quantités et précisions de l'utilisateur : " + draft.note + "\n" : "")
+    + (draft.products.length ? "Produits scannés (valeurs pour 100 g, tel que vendu) :\n" + draft.products.map(pr =>
+        `- code ${pr.code} : ${pr.nom} : ${r1(pr.per.kcal)} kcal, protéines ${r1(pr.per.p)} g, glucides ${r1(pr.per.c)} g, lipides ${r1(pr.per.f)} g`
+        + (pr.portion ? `, portion indiquée ${r1(pr.portion)} g` : "")).join("\n") + "\n" : "")
+    + (direct.length ? "Déjà comptés, ne les ajoute pas : " + direct.map(i => i.nom).join(" ; ") + ".\n" : "")
     + (draft.photos.length > 1 ? `${draft.photos.length} photos du même repas.\n` : "")
+    + (!draft.photos.length ? "Pas de photo : base-toi sur les produits scannés et les précisions.\n" : "")
     + `Type de repas : ${draft.type}. Analyse ce repas et réponds en JSON.`;
   const content = draft.photos.length
     ? [{ type:"text", text:userText }, ...draft.photos.map(p => ({ type:"image_url", image_url:{ url:p.full } }))]
@@ -618,15 +660,34 @@ function normItem(x){
 }
 function setRatio(it){ it.ratio = it.g > 0 ? { kcal: it.kcal/it.g, p: it.p/it.g, c: it.c/it.g, f: it.f/it.g } : null; }
 
+// aliment calculé à partir des valeurs pour 100 g d'un produit scanné
+function productItem(pr, g){
+  const it = { nom: pr.nom, g, kcal: pr.per.kcal*g/100, p: pr.per.p*g/100, c: pr.per.c*g/100, f: pr.per.f*g/100,
+    code: pr.code, info: `Code-barres · ${fmt(pr.per.kcal)} kcal pour 100 g · poids tel que vendu` };
+  setRatio(it); return it;
+}
 async function analyse(){
-  if (!draft.photos.length && !draft.note.trim()){ toast("Ajoute une photo ou une description."); return; }
+  if (!draft.photos.length && !draft.products.length && !draft.note.trim()){ toast("Ajoute une photo, un produit scanné ou une description."); return; }
   draft.loading = true; draft.error = ""; render();
   try {
     const j = await callModel();
-    const found = Array.isArray(j.items) ? j.items.map(normItem) : [];
-    // les produits scannés restent ; le reste est remplacé par la nouvelle analyse
+    const raw = Array.isArray(j.items) ? j.items : [];
+    const byCode = new Map(draft.products.map(pr => [pr.code, pr]));
+    const seen = new Set();
+    // l'IA choisit les grammes ; pour un produit scanné, les macros viennent toujours d'Open Food Facts
+    const found = raw.map(x => {
+      const pr = byCode.get(String(x.code ?? "").replace(/\D/g, ""));
+      if (!pr || seen.has(pr.code)) return normItem(x);
+      seen.add(pr.code);
+      return productItem(pr, num(x.grammes ?? x.g) || pr.portion || 100);
+    });
+    const missing = draft.products.filter(pr => !seen.has(pr.code));
+    missing.forEach(pr => found.push(productItem(pr, pr.portion || 100)));
+    draft.products.forEach(pr => pr.used = true);
+    // les produits ajoutés tels quels restent ; le reste est remplacé par la nouvelle analyse
     draft.items = draft.items.filter(i => i.scan).concat(found);
-    draft.name = j.plat || draft.name; draft.hyp = j.hypotheses || ""; draft.conf = j.confiance || "";
+    draft.name = j.plat || draft.name; draft.conf = j.confiance || "";
+    draft.hyp = [j.hypotheses || "", missing.length ? `Ajouté avec la portion indiquée, à vérifier : ${missing.map(p => p.nom).join(", ")}.` : ""].filter(Boolean).join(" ");
     draft.analysed = true;
     if (!found.length) draft.error = "Aucun aliment détecté. Ajoute des précisions ou saisis à la main.";
   } catch(e){ draft.error = e.message; }
@@ -637,6 +698,8 @@ async function analyse(){
 function saveMeal(){
   const items = draft.items.filter(i => i.nom.trim() || i.kcal).map(({ nom, g, kcal, p, c, f }) => ({ nom, g, kcal, p, c, f }));
   if (!items.length){ toast("Ajoute au moins un aliment."); return; }
+  const pending = draft.products.filter(p => !p.used);
+  if (pending.length){ toast(`${S.settings.apiKey ? "Relance l'analyse pour compter" : "Ajoute tel quel"} ${pending.map(p => p.nom).join(", ")}, ou retire-le.`); return; }
   const now = new Date();
   S.meals.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), date: curDate,
     time: String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0"),
@@ -670,11 +733,26 @@ function getDetector(){
   return detectorP;
 }
 
+// chiffre de contrôle GTIN (EAN-8, UPC-A, EAN-13, GTIN-14) : repère les fautes de frappe à la saisie manuelle
+function gtinOk(code){
+  if (![8,12,13,14].includes(code.length)) return false;
+  const d = code.split("").map(Number), check = d.pop();
+  const s = d.reverse().reduce((t, x, i) => t + x * (i % 2 ? 1 : 3), 0);
+  return (10 - s % 10) % 10 === check;
+}
+// renvoie { code, nom, per, portion }, ou null si introuvable, ou { nom, empty:true } sans valeurs nutritionnelles
+const offCache = new Map();
 async function lookupOFF(code){
+  if (!offCache.has(code)) offCache.set(code, fetchOFF(code).catch(e => { offCache.delete(code); throw e; }));
+  return offCache.get(code);
+}
+async function fetchOFF(code){
   let r;
   try { r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_fr,generic_name_fr,brands,nutriments,serving_quantity`); }
   catch(e){ throw new Error("Open Food Facts injoignable. Vérifie ta connexion."); }
   if (r.status === 404) return null;
+  // Open Food Facts limite à 15 fiches produit par minute et par adresse IP
+  if (r.status === 429) throw new Error("Trop de scans en une minute pour Open Food Facts. Attends une minute puis rescanne.");
   if (!r.ok) throw new Error(`Open Food Facts indisponible (erreur ${r.status}). Réessaie dans un instant.`);
   const j = await r.json();
   if (j.status !== 1 || !j.product) return null;
@@ -688,10 +766,7 @@ async function lookupOFF(code){
   const k100 = num(n["energy-kcal_100g"]) || num(n.energy_100g) / 4.184;
   const per = { kcal:k100, p:num(n.proteins_100g), c:num(n.carbohydrates_100g), f:num(n.fat_100g) };
   if (!per.kcal && !per.p && !per.c && !per.f) return { nom, empty:true };
-  const portion = num(p.serving_quantity), g = portion || 100;
-  const it = { nom, g, kcal:per.kcal*g/100, p:per.p*g/100, c:per.c*g/100, f:per.f*g/100, scan:true,
-    info:`Code-barres · ${fmt(per.kcal)} kcal pour 100 g${portion ? ` · portion ${fmt(portion)} g` : ""}` };
-  setRatio(it); return it;
+  return { code, nom, per, portion: num(p.serving_quantity) };
 }
 
 let SC = null;   // scanner ouvert : { stream, det, seen, added, busy, timer }
@@ -713,10 +788,12 @@ function scMsg(text, kind){
   const m = $("#scmsg"); if (!m) return;
   m.textContent = text; m.className = "sc-msg" + (kind ? " " + kind : "");
 }
+// liste des produits du repas, retirables d'un tap sur la croix
 function scList(){
   const l = $("#sclist"); if (!l || !SC) return;
-  l.innerHTML = SC.added.map(n => `<span>${esc(n)}</span>`).join("");
-  const d = $("#scdone"); if (d) d.textContent = SC.added.length ? `Terminé · ${SC.added.length}` : "Terminé";
+  const n = draft.products.length;
+  l.innerHTML = draft.products.map(pr => `<button class="sc-chip" data-sccode="${pr.code}" aria-label="Retirer ${esc(pr.nom)}"><span>${esc(pr.nom)}</span>${XI}</button>`).join("");
+  const d = $("#scdone"); if (d) d.textContent = n ? `Terminé · ${n} produit${n > 1 ? "s" : ""}` : "Terminé";
 }
 function stopCamera(me){
   clearTimeout(me.timer);
@@ -731,10 +808,20 @@ async function openScanner(){
   history.pushState({ scanner:true }, "");
   $("#scclose").addEventListener("click", () => closeScanner());
   $("#scdone").addEventListener("click", () => closeScanner());
+  $("#sclist").addEventListener("click", e => {
+    const b = e.target.closest("[data-sccode]"); if (!b) return;
+    const pr = draft.products.find(p => p.code === b.dataset.sccode); if (!pr) return;
+    draft.products = draft.products.filter(p => p !== pr);
+    me.seen.delete(pr.code); scList(); render();
+    scMsg(`Retiré : ${pr.nom}`);
+  });
+  scList();
   $("#scform").addEventListener("submit", e => {
     e.preventDefault();
     const code = $("#sccode").value.replace(/\D/g, "");
-    if (code.length < 8 || code.length > 14){ scMsg("Un code-barres fait 8 à 14 chiffres.", "warn"); return; }
+    if (!gtinOk(code)){ scMsg(code.length === 12 || code.length < 13
+      ? `Code incomplet ou erroné (${code.length} chiffres). La plupart des produits en ont 13 : vérifie-le sous les barres.`
+      : "Ce code n'est pas valide. Vérifie les chiffres sous les barres.", "warn"); return; }
     $("#sccode").value = ""; $("#sccode").blur(); me.seen.delete(code); onCode(me, code);
   });
   $("#scphoto").addEventListener("change", async e => {
@@ -771,7 +858,7 @@ async function startCamera(me){
   try { await detP; } catch(e){ if (SC === me) scMsg(e.message, "warn"); return; }
   if (SC !== me || !me.stream) return;
   $("#scanner").classList.remove("idle");
-  if (!me.added.length) scMsg("Place le code-barres dans le cadre");
+  if (!me.added.length) scMsg(draft.products.length ? "Scanne un autre produit, ou touche Terminé" : "Place le code-barres dans le cadre");
   clearTimeout(me.timer); tick(me);
 }
 async function tick(me){
@@ -786,19 +873,22 @@ async function tick(me){
   if (SC === me && me.stream) me.timer = setTimeout(() => tick(me), 150);
 }
 async function onCode(me, code){
-  me.seen.add(code); me.busy = true;
+  me.seen.add(code);
+  // un produit déjà dans la liste n'est jamais ajouté deux fois
+  const dup = draft.products.find(p => p.code === code);
+  if (dup){ scMsg(`Déjà dans la liste : ${dup.nom}`); return; }
+  me.busy = true;
   try { navigator.vibrate && navigator.vibrate(40); } catch(e){}
-  scMsg(`Recherche du produit ${code}…`);
+  scMsg("Recherche du produit…");
   try {
-    const it = await lookupOFF(code);
+    const pr = await lookupOFF(code);
     if (SC !== me) return;
-    if (!it) scMsg(`Produit ${code} introuvable. Prends son étiquette en photo, puis lance l'analyse.`, "warn");
-    else if (it.empty) scMsg(`${it.nom} : pas de valeurs nutritionnelles connues. Photographie l'étiquette.`, "warn");
+    if (!pr) scMsg(`Produit ${code} introuvable. Prends son étiquette en photo, l'IA la lira.`, "warn");
+    else if (pr.empty) scMsg(`${pr.nom} : pas de valeurs nutritionnelles connues. Photographie l'étiquette.`, "warn");
     else {
-      draft.items.push(it);
-      if (!draft.name.trim()) draft.name = it.nom;
-      me.added.push(it.nom); scList(); render();
-      scMsg(`Ajouté : ${it.nom}`, "ok");
+      draft.products.push({ ...pr, used:false });
+      me.added.push(pr.code); scList(); render();
+      scMsg(`Ajouté : ${pr.nom}. Scanne le suivant ou touche Terminé.`, "ok");
     }
   } catch(e){ if (SC === me){ me.seen.delete(code); scMsg(e.message, "warn"); } }
   finally { me.busy = false; }
@@ -808,9 +898,10 @@ function closeScanner(fromHistory){
   SC = null; stopCamera(me);
   $("#scanner")?.remove(); document.body.classList.remove("noscroll");
   if (!fromHistory && history.state && history.state.scanner) history.back();
-  if (me.added.length){
-    toast(me.added.length > 1 ? `${me.added.length} produits ajoutés` : "Produit ajouté");
-    setTimeout(() => document.getElementById("items")?.scrollIntoView({ behavior:"smooth", block:"start" }), 50);
+  const n = me.added.filter(code => draft.products.some(p => p.code === code)).length;
+  if (n){
+    toast(n > 1 ? `${n} produits ajoutés` : "Produit ajouté");
+    setTimeout(() => document.getElementById("prods")?.scrollIntoView({ behavior:"smooth", block:"start" }), 50);
   }
 }
 // bouton retour d'Android : ferme le scanner au lieu de quitter l'appli
@@ -958,10 +1049,19 @@ function bind(){
     draft.photos.splice(+b.dataset.rmphoto, 1); draft.error = ""; render();
   }));
   on("#scan","click", openScanner);
+  document.querySelectorAll("[data-rmprod]").forEach(b => b.addEventListener("click", () => {
+    draft.products.splice(+b.dataset.rmprod, 1); render();
+  }));
+  // sans clé API : le produit devient directement un aliment (portion indiquée, sinon 100 g)
+  document.querySelectorAll("[data-direct]").forEach(b => b.addEventListener("click", () => {
+    const pr = draft.products.splice(+b.dataset.direct, 1)[0];
+    const it = productItem(pr, pr.portion || 100); it.scan = true;
+    draft.items.push(it); if (!draft.name.trim()) draft.name = pr.nom; render();
+  }));
   on("#note","input", e => {
     draft.note = e.target.value;
     const b = $("#analyse"); if (b) b.disabled = !canAnalyse();
-    const h = $("#ahint"); if (h) h.hidden = !!(draft.photos.length || draft.note.trim());
+    const h = $("#ahint"); if (h) h.hidden = !!(draft.photos.length || draft.products.length || draft.note.trim());
   });
   document.querySelectorAll("[data-type]").forEach(b => b.addEventListener("click", () => {
     draft.type = b.dataset.type;
