@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Assiette</title>
-<meta name="theme-color" content="#1E6B52" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#101513" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F5F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B100D" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Assiette">
@@ -14,182 +14,235 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Sora:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap">
 <style>
 :root{
-  --bg:#F3F5F2; --surface:#FFFFFF; --sunk:#E9EEEA; --ink:#17201C; --muted:#5E6B64; --line:#DDE3DE;
-  --accent:#1E6B52; --accent-ink:#FFFFFF; --accent-soft:#DCEBE4;
-  --prot:#B8472E; --carb:#B07C12; --fat:#3868A0; --danger:#B8472E;
-  --radius:14px;
+  --bg:#F4F5F0; --surface:#FFFFFF; --sunk:#ECEEE7; --ink:#131A16; --muted:#667069; --line:rgba(19,26,22,.09);
+  --accent:#0F7A55; --accent2:#17936A; --accent-ink:#FFFFFF; --accent-soft:#DDF0E6;
+  --grad:linear-gradient(135deg,var(--accent2),var(--accent));
+  --prot:#B8472E; --carb:#B07C12; --fat:#3868A0; --danger:#C0392B;
+  --shadow:0 1px 2px rgba(19,26,22,.05),0 12px 32px -16px rgba(19,26,22,.22);
+  --radius:26px; --r-md:18px;
   --display:"Sora", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
   --body:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#101513; --surface:#18201C; --sunk:#202a25; --ink:#E6ECE8; --muted:#93A198; --line:#2A342F;
-    --accent:#4FB38D; --accent-ink:#0C1511; --accent-soft:#1d3a2f;
-    --prot:#E07A5F; --carb:#E0B040; --fat:#7AA7DA; --danger:#E07A5F;
+    --bg:#0B100D; --surface:#141B17; --sunk:#1C2520; --ink:#E9EFEB; --muted:#98A59C; --line:rgba(255,255,255,.08);
+    --accent:#3FBF8D; --accent2:#66E0B0; --accent-ink:#06140D; --accent-soft:#173428;
+    --prot:#E07A5F; --carb:#E0B040; --fat:#7AA7DA; --danger:#EE7B67;
+    --shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 32px -16px rgba(0,0,0,.7);
     color-scheme:dark;
   }
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
-body{padding:env(safe-area-inset-top,0px) 16px calc(96px + env(safe-area-inset-bottom,0px))}
-.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+body{padding:env(safe-area-inset-top,0px) 16px calc(124px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
-h2{font-size:1.05rem;font-weight:600}
+h2{font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
 .num{font-family:var(--display);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .small{font-size:.85rem}
+.lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;touch-action:manipulation}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#app.enter{animation:rise .22s ease-out}
-@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+input:focus-visible,textarea:focus-visible{outline:none;box-shadow:0 0 0 2px var(--accent)}
+svg{flex:none}
 
-/* header */
-.top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:14px}
-.brand{font-family:var(--display);font-weight:700;font-size:1.25rem;letter-spacing:-.01em}
-.datenav{display:flex;align-items:center;gap:4px}
-.daybtn{min-width:112px;height:44px;border:none;background:none;text-align:center;font-weight:600;border-radius:12px}
-.daybtn.past{color:var(--accent)}
-.iconbtn{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:1.1rem}
-.iconbtn:disabled{opacity:.35}
+/* entrée des écrans */
+#app.enter>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) backwards}
+#app.enter>*:nth-child(2){animation-delay:.05s}
+#app.enter>*:nth-child(3){animation-delay:.1s}
+#app.enter>*:nth-child(4){animation-delay:.15s}
+#app.enter>*:nth-child(5){animation-delay:.2s}
+#app.enter>*:nth-child(n+6){animation-delay:.25s}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+#app.enter .ring .val{animation:ringin 1.1s cubic-bezier(.2,.8,.2,1) .1s backwards}
+@keyframes ringin{from{stroke-dashoffset:100}}
 
-/* summary */
-.summary{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:18px}
-.hero{display:flex;align-items:center;gap:20px}
-.ring{position:relative;width:132px;height:132px;flex:none}
+/* en-tête */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:20px}
+.title{font-family:var(--display);font-size:1.8rem;font-weight:700;letter-spacing:-.025em;line-height:1.1}
+.sub{color:var(--muted);font-size:.92rem;margin-top:2px}
+.sub b{color:var(--accent);font-weight:600}
+.daybtn{border:none;background:none;padding:0;text-align:left;min-width:0}
+.stepper{display:flex;gap:2px;padding:4px;background:var(--surface);border-radius:99px;box-shadow:var(--shadow);flex:none}
+.stepper button{width:42px;height:42px;border:none;background:none;border-radius:50%;display:grid;place-items:center;color:var(--ink)}
+.stepper button:active:not(:disabled){background:var(--sunk)}
+.stepper button:disabled{opacity:.3}
+.stepper svg{width:20px;height:20px}
+
+/* résumé */
+.summary{position:relative;overflow:hidden;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 20px 20px;display:flex;flex-direction:column;gap:22px}
+.summary::before{content:"";position:absolute;top:-90px;right:-70px;width:280px;height:280px;background:radial-gradient(closest-side,var(--accent-soft),transparent);pointer-events:none}
+.summary>*{position:relative}
+.hero{display:flex;align-items:center;gap:22px}
+.ring{position:relative;width:148px;height:148px;flex:none}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring circle{fill:none;stroke-width:11}
+.ring circle{fill:none;stroke-width:12}
 .ring .track{stroke:var(--sunk)}
-.ring .val{stroke:var(--accent);stroke-linecap:round}
+.ring .val{stroke:url(#rg);stroke-linecap:round}
 .ring.over .val{stroke:var(--danger)}
 .ring .in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.ring .big{font-size:1.9rem;font-weight:700;line-height:1;letter-spacing:-.02em}
+.ring .big{font-size:2.05rem;font-weight:700;line-height:1;letter-spacing:-.03em}
 .rest{display:flex;flex-direction:column;gap:2px;min-width:0}
-.rest b{font-family:var(--display);font-size:1.7rem;line-height:1.15;letter-spacing:-.01em}
+.rest b{font-family:var(--display);font-size:1.9rem;line-height:1.1;letter-spacing:-.02em}
 .rest.over b{color:var(--danger)}
-.bar{height:10px;border-radius:99px;background:var(--sunk);overflow:hidden}
-.bar>span{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .3s}
-.bar.thin{height:6px}
-.macros{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.macro{display:flex;flex-direction:column;gap:6px;min-width:0}
-.macro .val{font-size:1rem;font-weight:600}
-.macro .val small{font-weight:400;color:var(--muted);font-family:var(--body)}
-.p>span,.chip.p::before{background:var(--prot)}
-.c>span,.chip.c::before{background:var(--carb)}
-.f>span,.chip.f::before{background:var(--fat)}
-.over>span{background:var(--danger)}
+.macros{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.macro{display:flex;flex-direction:column;gap:6px;min-width:0;background:var(--sunk);border-radius:var(--r-md);padding:12px}
+.macro .lbl{display:flex;align-items:center;gap:6px}
+.macro .lbl::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.macro.p .lbl{color:var(--prot)}.macro.c .lbl{color:var(--carb)}.macro.f .lbl{color:var(--fat)}
+.macro .val{font-size:1.25rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.macro .val small{font-weight:500;color:var(--muted);font-family:var(--body);font-size:.72rem;letter-spacing:0;display:block;margin-top:1px}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar>span{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .4s}
+.p .bar>span,.chip.p::before{background:var(--prot)}
+.c .bar>span,.chip.c::before{background:var(--carb)}
+.f .bar>span,.chip.f::before{background:var(--fat)}
+.bar.over>span{background:var(--danger)}
 
-/* meals */
-.sect{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.meals{display:flex;flex-direction:column;gap:10px}
-.meal{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-.mrow{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:10px}
-.minfo{display:block;min-width:0;width:100%;border:none;background:none;padding:0;text-align:left}
-.mitems{border-top:1px solid var(--line);padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;font-size:.88rem}
+/* repas */
+.sect{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:4px 4px 0}
+.meals{display:flex;flex-direction:column;gap:12px}
+.meal{background:var(--surface);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+.mrow{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;padding:12px;width:100%;border:none;background:none;text-align:left}
+.thumb{width:64px;height:64px;border-radius:18px;object-fit:cover;background:var(--sunk);display:grid;place-items:center;color:var(--muted)}
+.thumb svg{width:26px;height:26px}
+.minfo{min-width:0}
+.name{font-weight:600;font-size:1.02rem;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.meta{font-size:.8rem;color:var(--muted);margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px}
+.chip{font-size:.78rem;display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:0}
+.kc{font-family:var(--display);font-weight:700;font-size:1.25rem;letter-spacing:-.02em;line-height:1.1}
+.kcu{font-size:.72rem;color:var(--muted)}
+.chev{width:18px;height:18px;color:var(--muted);margin-top:6px;transition:transform .25s}
+.mrow[aria-expanded=true] .chev{transform:rotate(180deg)}
+.mpanel{border-top:1px solid var(--line);padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px;animation:rise .3s ease-out}
+.mitems{display:flex;flex-direction:column;gap:8px;font-size:.9rem}
 .mitems .li{display:flex;justify-content:space-between;gap:12px}
 .mitems .li span:first-child{overflow-wrap:anywhere}
 .mitems .li span:last-child{white-space:nowrap}
-.thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;background:var(--sunk);display:grid;place-items:center;color:var(--muted);font-size:.7rem;text-align:center}
-.meal .name{font-weight:600;overflow-wrap:anywhere}
-.meal .meta{font-size:.8rem;color:var(--muted)}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
-.chip{font-size:.8rem;display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
-.chip::before{content:"";width:8px;height:8px;border-radius:50%}
-.meal .right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-.meal .kc{font-family:var(--display);font-weight:600}
-.del{border:none;background:none;color:var(--muted);min-height:40px;min-width:44px;padding:0 6px;margin:-4px -6px -8px 0;display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;border-radius:10px}
-.del svg{width:20px;height:20px}
-.del.armed{color:var(--accent-ink);background:var(--danger);font-weight:600;padding:0 12px}
-.empty{padding:28px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;gap:12px}
-.empty svg{width:40px;height:40px}
+.mact{display:flex;gap:8px;flex-wrap:wrap}
+.mact .btn{flex:1 1 140px}
+.empty{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 20px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.empty .orb{width:84px;height:84px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin-bottom:10px}
+.empty .orb svg{width:38px;height:38px}
+.empty b{font-family:var(--display);font-size:1.15rem}
+.empty .btn{margin-top:14px;align-self:stretch}
 
-/* forms */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px}
-label.f,.fl{display:flex;flex-direction:column;gap:6px;font-size:.85rem;color:var(--muted);font-weight:500}
-.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;background:var(--sunk);border-radius:12px}
-.seg button{border:none;background:none;border-radius:9px;padding:0 2px;min-height:40px;font-size:.82rem;font-weight:600;color:var(--muted)}
-.seg button[aria-checked=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
-.link{border:none;background:none;padding:0;color:var(--accent);font-weight:600;text-decoration:underline}
-.pw{display:flex;gap:8px}
-.pw .btn{flex:none;padding:0 14px}
-input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;font-size:16px;color:var(--ink)}
-textarea{resize:vertical;min-height:70px}
+/* formulaires */
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:14px}
+label.f,.fl{display:flex;flex-direction:column;gap:7px;font-size:.85rem;color:var(--muted);font-weight:600}
+input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{width:100%;border:none;background:var(--sunk);border-radius:14px;padding:13px 14px;font-size:16px;color:var(--ink)}
+::placeholder{color:var(--muted);opacity:.75}
+textarea{resize:vertical;min-height:76px}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 .row>*{flex:1 1 140px}
-.btn{border:none;border-radius:12px;padding:13px 16px;min-height:48px;font-weight:600;background:var(--accent);color:var(--accent-ink);font-size:1rem;transition:transform .1s}
-.btn:active:not(:disabled){transform:scale(.98)}
-.btn.sm{padding:0 16px;min-height:40px;font-size:.9rem}
-.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
-.btn:disabled{opacity:.55}
-.drop{position:relative;display:grid;place-items:center;min-height:200px;border:1.5px dashed var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;text-align:center;color:var(--muted);cursor:pointer}
-.drop img{width:100%;max-height:340px;object-fit:cover;display:block}
-.drop .cta{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px}
-.drop .cta b{font-family:var(--display);color:var(--ink);font-size:1.05rem}
-.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.drop .chg{position:absolute;right:10px;bottom:10px;background:var(--ink);color:var(--bg);opacity:.85;font-size:.8rem;font-weight:600;padding:6px 12px;border-radius:99px}
-.drop.busy::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--accent);box-shadow:0 0 16px 4px var(--accent);animation:scan 1.6s ease-in-out infinite alternate;pointer-events:none}
-@keyframes scan{to{top:calc(100% - 3px)}}
-.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.9rem}
-.switch small{display:block;color:var(--muted);font-size:.8rem}
-.switch input{-webkit-appearance:none;appearance:none;flex:none;position:relative;width:46px;height:28px;margin:0;border-radius:99px;background:var(--sunk);border:1px solid var(--line);transition:background .2s}
-.switch input::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}
-.switch input:checked{background:var(--accent);border-color:var(--accent)}
-.switch input:checked::after{transform:translateX(18px);background:var(--accent-ink)}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;background:var(--sunk);border-radius:16px}
+.seg button{border:none;background:none;border-radius:12px;padding:0 2px;min-height:42px;font-size:.82rem;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
+.seg button[aria-checked=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.16)}
+.link{border:none;background:none;padding:0;color:var(--accent);font-weight:600;text-decoration:underline}
+.pw{display:flex;gap:8px}
+.pw .btn{flex:none;min-height:48px;padding:0 16px}
+.btn{border:none;border-radius:18px;padding:0 20px;min-height:54px;font-weight:600;background:var(--grad);color:var(--accent-ink);font-size:1rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center;box-shadow:0 12px 22px -12px var(--accent);transition:transform .12s,opacity .2s}
+.btn svg{width:20px;height:20px}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn.ghost{background:var(--sunk);color:var(--ink);box-shadow:none}
+.btn.danger{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger);box-shadow:none}
+.btn.danger.armed{background:var(--danger);color:var(--accent-ink)}
+.btn.sm{min-height:44px;padding:0 16px;font-size:.9rem;border-radius:14px}
+.btn:disabled{opacity:.4;box-shadow:none}
+.textbtn{border:none;background:none;color:var(--muted);font-weight:600;font-size:.9rem;padding:10px;align-self:center}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.95rem;font-weight:600;background:var(--sunk);border-radius:16px;padding:12px 14px}
+.switch small{display:block;color:var(--muted);font-size:.8rem;font-weight:400}
+.switch input{-webkit-appearance:none;appearance:none;flex:none;position:relative;width:50px;height:30px;margin:0;border-radius:99px;background:var(--line);transition:background .2s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{transform:translateX(20px)}
 
-/* result items */
-.item{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
-.item:first-of-type{border-top:none}
+/* prise de photo */
+.cap{position:relative;overflow:hidden;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:30px 18px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.cap::before{content:"";position:absolute;top:-80px;left:50%;width:340px;height:340px;margin-left:-170px;background:radial-gradient(closest-side,var(--accent-soft),transparent);pointer-events:none}
+.cap>*{position:relative}
+.captitle{font-family:var(--display);font-size:1.2rem;letter-spacing:-.01em}
+.shutter{position:relative;width:92px;height:92px;border-radius:50%;background:var(--grad);color:var(--accent-ink);display:grid;place-items:center;margin-bottom:12px;cursor:pointer;box-shadow:0 0 0 9px var(--accent-soft),0 18px 32px -12px var(--accent)}
+.shutter::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent2);animation:pulse 2.6s ease-out infinite;pointer-events:none}
+@keyframes pulse{from{transform:scale(1.1);opacity:.7}to{transform:scale(1.7);opacity:0}}
+.shutter svg{width:40px;height:40px}
+.shutter input,.pill input,.glass input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.pills{display:flex;gap:10px;width:100%;margin-top:14px}
+.pill{flex:1;position:relative;overflow:hidden;min-height:48px;border:none;border-radius:99px;background:var(--sunk);color:var(--ink);font-weight:600;font-size:.92rem;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;cursor:pointer}
+.pill svg{width:19px;height:19px}
+.photo{position:relative;overflow:hidden;border-radius:var(--radius);box-shadow:var(--shadow);aspect-ratio:4/3;background:var(--sunk)}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.photo .x{position:absolute;top:12px;right:12px;width:44px;height:44px;border:none;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 62%,transparent);color:var(--bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.photo .x svg{width:20px;height:20px}
+.overlay{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px}
+.glass{flex:1;position:relative;overflow:hidden;min-height:44px;border-radius:99px;background:color-mix(in srgb,var(--ink) 62%,transparent);color:var(--bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);font-weight:600;font-size:.88rem;display:flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;cursor:pointer}
+.glass svg{width:18px;height:18px}
+.photo.busy::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--accent2);box-shadow:0 0 18px 5px var(--accent2);animation:scan 1.6s ease-in-out infinite alternate;pointer-events:none}
+@keyframes scan{to{top:calc(100% - 3px)}}
+
+/* aliments */
+#items{display:flex;flex-direction:column;gap:12px}
+.item{display:flex;flex-direction:column;gap:10px;background:var(--surface);border-radius:22px;box-shadow:var(--shadow);padding:14px}
 .item .head{display:flex;gap:8px;align-items:center}
 .item .head input{flex:1;font-weight:600}
+.item .head .iconbtn{width:44px;height:44px;border-radius:50%;border:none;background:var(--sunk);display:grid;place-items:center;flex:none;color:var(--muted)}
+.item .head .iconbtn svg{width:18px;height:18px}
 .item .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.item .grid label{display:flex;flex-direction:column;gap:3px;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;min-width:0}
-.item .grid input{padding:8px 6px;text-align:center;font-variant-numeric:tabular-nums}
-.savebar{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;margin:0 -16px -16px;padding:12px 16px 16px;background:var(--surface);border-top:1px solid var(--line);border-radius:0 0 var(--radius) var(--radius);box-shadow:0 -8px 16px -10px rgba(0,0,0,.25)}
-.card:has(#items :focus) .savebar{position:static}
-.totals{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-variant-numeric:tabular-nums}
-.totals b{font-family:var(--display)}
-.note{font-size:.88rem;background:var(--accent-soft);border-radius:10px;padding:10px 12px}
-.err{font-size:.9rem;color:var(--danger);background:transparent;border:1px solid var(--danger);border-radius:10px;padding:10px 12px}
-.spinner{width:18px;height:18px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:-3px;margin-right:8px;animation:spin .8s linear infinite}
+.item .grid label{display:flex;flex-direction:column;gap:4px;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;min-width:0}
+.item .grid label:nth-child(3){color:var(--prot)}.item .grid label:nth-child(4){color:var(--carb)}.item .grid label:nth-child(5){color:var(--fat)}
+.item .grid input{padding:10px 4px;text-align:center;font-variant-numeric:tabular-nums;border-radius:12px}
+.savebar{position:sticky;bottom:calc(102px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;flex-direction:column;gap:12px;padding:14px;background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-radius:24px;box-shadow:var(--shadow),0 0 0 1px var(--line)}
+.wrap:has(#items :focus) .savebar{position:static}
+.totals{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;font-variant-numeric:tabular-nums;font-weight:600}
+.totals b{font-family:var(--display);font-size:1.3rem;letter-spacing:-.02em}
+.note{font-size:.9rem;background:var(--accent-soft);border-radius:16px;padding:12px 14px}
+.err{font-size:.9rem;color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);border-radius:16px;padding:12px 14px}
+.spinner{width:18px;height:18px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* history */
+/* historique */
 .hread{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+.hread b{display:block}
+.hread b::first-letter{text-transform:uppercase}
 .chartbox{position:relative}
-.chart{height:130px;display:flex;align-items:flex-end;gap:4px}
+.chart{height:140px;display:flex;align-items:flex-end;gap:5px}
 .chart .col{flex:1;height:100%;min-width:0;display:flex;align-items:flex-end;border:none;background:none;padding:0}
-.chart .col i{display:block;width:100%;min-height:3px;border-radius:5px 5px 2px 2px;background:var(--accent);opacity:.5}
-.chart .col.sel i{opacity:1}
+.chart .col i{display:block;width:100%;min-height:4px;border-radius:8px;background:var(--accent);opacity:.32;transition:opacity .2s}
+.chart .col.sel i{opacity:1;background:var(--grad)}
 .chart .col.over i{background:var(--danger)}
-.chart .col.none i{background:var(--sunk);opacity:1;height:3px}
-.goalline{position:absolute;left:0;right:0;border-top:1.5px dashed var(--muted);pointer-events:none}
-.days{display:flex;gap:4px;margin-top:6px}
-.days span{flex:1;text-align:center;font-size:.72rem;color:var(--muted)}
+.chart .col.none i{background:var(--sunk);opacity:1;height:4px}
+.goalline{position:absolute;left:0;right:0;border-top:1.5px dashed var(--muted);opacity:.7;pointer-events:none}
+.days{display:flex;gap:5px}
+.days span{flex:1;text-align:center;font-size:.72rem;color:var(--muted);font-weight:600}
 .days .today{color:var(--accent);font-weight:700}
-.wtop{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.wbig{font-size:1.9rem;font-weight:700;letter-spacing:-.02em}
-.wbig small{font-size:1rem;font-weight:500;color:var(--muted)}
-.spark{width:100%;height:64px;display:block}
-.spark path{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.wlist{display:flex;flex-direction:column;gap:6px;font-variant-numeric:tabular-nums}
-.wlist div{display:flex;justify-content:space-between;font-size:.9rem}
+.wtop{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.wbig{font-size:2.3rem;font-weight:700;letter-spacing:-.03em;line-height:1}
+.wbig small{font-size:1rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.spark{width:100%;height:72px;display:block}
+.spark path{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.wlist{display:flex;flex-direction:column;gap:8px;font-variant-numeric:tabular-nums}
+.wlist div{display:flex;justify-content:space-between;font-size:.92rem}
 
-/* nav */
-nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));z-index:10}
-nav.tabs button{border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:var(--muted);font-size:.75rem;font-weight:600}
+/* navigation flottante */
+nav.tabs{position:fixed;left:50%;transform:translateX(-50%);width:min(536px,calc(100% - 24px));bottom:calc(8px + env(safe-area-inset-bottom,0px));background:var(--surface);background:color-mix(in srgb,var(--surface) 86%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);border-radius:30px;box-shadow:var(--shadow),0 0 0 1px var(--line);display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;z-index:10}
+nav.tabs button{border:none;background:none;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 0 7px;color:var(--muted);font-size:.68rem;font-weight:600;transition:background .2s,color .2s}
 nav.tabs button svg{width:24px;height:24px}
-nav.tabs button[aria-current=page]{color:var(--accent)}
-nav.tabs .add span.plus{width:44px;height:30px;border-radius:15px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+nav.tabs button[aria-current=page]{color:var(--accent);background:var(--accent-soft)}
+nav.tabs .add span.plus{width:34px;height:34px;border-radius:50%;background:var(--grad);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 8px 16px -8px var(--accent)}
 nav.tabs .add span.plus svg{width:20px;height:20px}
+nav.tabs .add[aria-current=page]{color:var(--accent)}
 
-.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;max-width:calc(100% - 32px);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
-.toast.show{opacity:1}
+.toast{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:99px;font-size:.9rem;font-weight:500;max-width:calc(100% - 32px);text-align:center;z-index:20;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -197,10 +250,10 @@ nav.tabs .add span.plus svg{width:20px;height:20px}
 <div class="wrap" id="app"></div>
 
 <nav class="tabs" aria-label="Navigation">
-  <button data-view="journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>Journal</button>
-  <button data-view="add" class="add"><span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>Ajouter</button>
-  <button data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Historique</button>
-  <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Réglages</button>
+  <button data-view="journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg>Journal</button>
+  <button data-view="add" class="add"><span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>Ajouter</button>
+  <button data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>Historique</button>
+  <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h8M18 7h2M4 17h2M12 17h8"/><circle cx="15" cy="7" r="2.6"/><circle cx="9" cy="17" r="2.6"/></svg>Réglages</button>
 </nav>
 <div class="toast" id="toast" role="status"></div>
 
@@ -238,6 +291,18 @@ function dayLabel(s){
   if (s === shift(todayISO(), -1)) return "Hier";
   return parseISO(s).toLocaleDateString("fr-FR", { weekday:"short", day:"numeric", month:"short" });
 }
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function dayTitle(s){
+  const t = todayISO();
+  if (s === t) return "Aujourd'hui";
+  if (s === shift(t, -1)) return "Hier";
+  return cap(parseISO(s).toLocaleDateString("fr-FR", { weekday:"long" }));
+}
+function daySub(s){
+  const d = parseISO(s), t = todayISO();
+  if (s === t || s === shift(t, -1)) return d.toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long" });
+  return d.toLocaleDateString("fr-FR", d.getFullYear() === new Date().getFullYear() ? { day:"numeric", month:"long" } : { day:"numeric", month:"long", year:"numeric" });
+}
 function totals(items){
   return items.reduce((t,i) => ({ kcal:t.kcal+num(i.kcal), p:t.p+num(i.p), c:t.c+num(i.c), f:t.f+num(i.f) }), {kcal:0,p:0,c:0,f:0});
 }
@@ -257,6 +322,17 @@ function defaultType(){
   return "Dîner";
 }
 
+/* ---------- icônes ---------- */
+const ic = (body, sw = 1.8) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const CAM = ic(`<path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10.5H4z"/><circle cx="12" cy="13.5" r="3.6"/>`, 1.7);
+const IMG = ic(`<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/>`);
+const PEN = ic(`<path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/>`);
+const SPARK = ic(`<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>`);
+const XI = ic(`<path d="M6 6l12 12M18 6L6 18"/>`, 2.2);
+const PLATE = ic(`<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>`, 1.5);
+const CHEV = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
+const LEFT = ic(`<path d="M15 5l-7 7 7 7"/>`, 2.2), RIGHT = ic(`<path d="M9 5l7 7-7 7"/>`, 2.2);
+
 /* ---------- state ---------- */
 let view = "journal";
 let curDate = todayISO();
@@ -270,10 +346,12 @@ function arm(id){
   armT = setTimeout(() => { if (armedDelete === id){ armedDelete = null; render(); } }, 4000);
 }
 
-function go(v){
-  view = v; armedDelete = null; render(); window.scrollTo(0,0);
+let enterT;
+function animateIn(){
   const app = $("#app"); app.classList.remove("enter"); void app.offsetWidth; app.classList.add("enter");
+  clearTimeout(enterT); enterT = setTimeout(() => app.classList.remove("enter"), 1300);
 }
+function go(v){ view = v; armedDelete = null; render(); window.scrollTo(0,0); animateIn(); }
 document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => go(b.dataset.view)));
 
 function render(){
@@ -289,17 +367,17 @@ function render(){
 /* ---------- journal ---------- */
 function macroHTML(key, label, v, g){
   const over = g > 0 && v > g*1.1;
-  return `<div class="macro"><div class="lbl">${label}</div>
-    <div class="val num">${fmt(v)} <small>/ ${fmt(g)} g</small></div>
-    <div class="bar thin ${key}${over ? " over" : ""}"><span style="width:${pct(v,g)}%"></span></div></div>`;
+  return `<div class="macro ${key}"><div class="lbl">${label}</div>
+    <div class="val num">${fmt(v)}<small>sur ${fmt(g)} g</small></div>
+    <div class="bar${over ? " over" : ""}"><span style="width:${pct(v,g)}%"></span></div></div>`;
 }
 function ringHTML(v, g){
   const p = pct(v,g), over = g > 0 && v > g*1.1;
   return `<div class="ring${over ? " over" : ""}" role="img" aria-label="${fmt(v)} kcal sur ${fmt(g)}">
-    <svg viewBox="0 0 132 132" aria-hidden="true"><circle class="track" cx="66" cy="66" r="60"/>${p > 0 ? `<circle class="val" cx="66" cy="66" r="60" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - p}"/>` : ""}</svg>
+    <svg viewBox="0 0 148 148" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent2)"/><stop offset="1" style="stop-color:var(--accent)"/></linearGradient></defs>
+      <circle class="track" cx="74" cy="74" r="66"/>${p > 0 ? `<circle class="val" cx="74" cy="74" r="66" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - p}"/>` : ""}</svg>
     <div class="in"><div class="big num">${fmt(v)}</div><div class="muted small">kcal</div></div></div>`;
 }
-const TRASH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>`;
 function journalHTML(){
   const g = S.settings.goals, t = dayTotals(curDate), isToday = curDate === todayISO();
   const meals = S.meals.filter(m => m.date === curDate).sort((a,b) => a.time.localeCompare(b.time));
@@ -308,27 +386,32 @@ function journalHTML(){
     ? `<div class="rest"><span class="lbl">Restantes</span><b class="num">${fmt(rest)}</b><span class="muted small">Objectif ${fmt(g.kcal)} kcal</span></div>`
     : `<div class="rest over"><span class="lbl">Au-dessus</span><b class="num">+${fmt(-rest)}</b><span class="muted small">Objectif ${fmt(g.kcal)} kcal</span></div>`;
   const list = meals.length ? meals.map(m => {
-    const x = totals(m.items), open = openMeal === m.id, armed = armedDelete === m.id;
+    const x = totals(m.items), open = openMeal === m.id, armed = armedDelete === m.id, armedP = armedDelete === "ph:" + m.id;
     return `<div class="meal">
-      <div class="mrow">
-        ${m.thumb ? `<img class="thumb" src="${m.thumb}" alt="">` : `<div class="thumb">sans photo</div>`}
-        <button class="minfo" data-toggle="${m.id}" aria-expanded="${open}"><div class="name">${esc(m.name || m.type)}</div>
-          <div class="meta">${esc(m.type)} · ${esc(m.time)} · ${m.items.length} aliment${m.items.length > 1 ? "s" : ""}</div>
-          <div class="chips"><span class="chip p">P ${fmt(x.p)} g</span><span class="chip c">G ${fmt(x.c)} g</span><span class="chip f">L ${fmt(x.f)} g</span></div></button>
-        <div class="right"><span class="kc">${fmt(x.kcal)} <span class="muted small">kcal</span></span>
-          <button class="del${armed ? " armed" : ""}" data-del="${m.id}" aria-label="${armed ? "Confirmer la suppression" : "Supprimer ce repas"}">${armed ? "Confirmer" : TRASH}</button></div>
-      </div>
-      ${open ? `<div class="mitems">${m.items.map(i => `<div class="li"><span>${esc(i.nom)}</span><span class="muted num">${i.g ? fmt(i.g) + " g · " : ""}${fmt(i.kcal)} kcal</span></div>`).join("")}</div>` : ""}
+      <button class="mrow" data-toggle="${m.id}" aria-expanded="${open}">
+        ${m.thumb ? `<img class="thumb" src="${m.thumb}" alt="">` : `<div class="thumb">${PLATE}</div>`}
+        <div class="minfo"><div class="name">${esc(m.name || m.type)}</div>
+          <div class="meta">${esc(m.type)} · ${esc(m.time)}</div>
+          <div class="chips"><span class="chip p">P ${fmt(x.p)} g</span><span class="chip c">G ${fmt(x.c)} g</span><span class="chip f">L ${fmt(x.f)} g</span></div></div>
+        <div class="right"><span class="kc">${fmt(x.kcal)}</span><span class="kcu">kcal</span>${CHEV}</div>
+      </button>
+      ${open ? `<div class="mpanel">
+        <div class="mitems">${m.items.map(i => `<div class="li"><span>${esc(i.nom)}</span><span class="muted num">${i.g ? fmt(i.g) + " g · " : ""}${fmt(i.kcal)} kcal</span></div>`).join("")}</div>
+        <div class="mact">
+          ${m.thumb ? `<button class="btn sm danger${armedP ? " armed" : ""}" data-delphoto="${m.id}">${armedP ? "Confirmer" : "Retirer la photo"}</button>` : ""}
+          <button class="btn sm danger${armed ? " armed" : ""}" data-del="${m.id}">${armed ? "Confirmer" : "Supprimer le repas"}</button>
+        </div></div>` : ""}
     </div>`;
-  }).join("") : `<div class="empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg>
-      <div>Aucun repas ${isToday ? "aujourd'hui" : "ce jour"}.</div>
-      <button class="btn" data-go="add">Ajouter un repas</button></div>`;
+  }).join("") : `<div class="empty"><div class="orb">${PLATE}</div>
+      <b>${isToday ? "Ton assiette est vide" : "Rien ce jour-là"}</b>
+      <span class="muted">${isToday ? "Photographie ton prochain repas pour commencer." : "Tu peux ajouter un repas à cette date."}</span>
+      <button class="btn" data-go="add">${CAM}Ajouter un repas</button></div>`;
   return `
-  <div class="top"><div class="brand">Assiette</div>
-    <div class="datenav"><button class="iconbtn" id="prev" aria-label="Jour précédent">‹</button>
-      <button class="daybtn${isToday ? "" : " past"}" id="today" ${isToday ? "" : `aria-label="Revenir à aujourd'hui"`}>${dayLabel(curDate)}</button>
-      <button class="iconbtn" id="next" aria-label="Jour suivant" ${isToday ? "disabled" : ""}>›</button></div></div>
+  <div class="top">
+    <button class="daybtn" id="today" ${isToday ? "" : `aria-label="Revenir à aujourd'hui"`}><div class="title">${esc(dayTitle(curDate))}</div>
+      <div class="sub">${esc(daySub(curDate))}${isToday ? "" : ` · <b>Aujourd'hui</b>`}</div></button>
+    <div class="stepper"><button id="prev" aria-label="Jour précédent">${LEFT}</button>
+      <button id="next" aria-label="Jour suivant" ${isToday ? "disabled" : ""}>${RIGHT}</button></div></div>
   <section class="summary">
     <div class="hero">${ringHTML(t.kcal, g.kcal)}${restHTML}</div>
     <div class="macros">${macroHTML("p","Protéines",t.p,g.p)}${macroHTML("c","Glucides",t.c,g.c)}${macroHTML("f","Lipides",t.f,g.f)}</div>
@@ -343,7 +426,7 @@ function itemHTML(it, i){
   const f = (k, lbl, step) => `<label>${lbl}<input type="number" inputmode="decimal" step="${step}" min="0" id="it-${i}-${k}" data-i="${i}" data-k="${k}" value="${it[k] ? r0(it[k]*10)/10 : ""}"></label>`;
   return `<div class="item">
     <div class="head"><input type="text" id="it-${i}-nom" data-i="${i}" data-k="nom" value="${esc(it.nom)}" placeholder="Aliment" aria-label="Nom de l'aliment">
-      <button class="iconbtn" data-rm="${i}" aria-label="Retirer">×</button></div>
+      <button class="iconbtn" data-rm="${i}" aria-label="Retirer cet aliment">${XI}</button></div>
     <div class="grid">${f("g","Grammes","1")}${f("kcal","kcal","1")}${f("p","Prot.","0.1")}${f("c","Gluc.","0.1")}${f("f","Lip.","0.1")}</div>
   </div>`;
 }
@@ -353,41 +436,54 @@ function totalsHTML(){
 }
 const SHORT = { "Petit-déjeuner":"Petit-déj.", "Déjeuner":"Déjeuner", "Collation":"Collation", "Dîner":"Dîner" };
 const canAnalyse = () => !draft.loading && !!S.settings.apiKey && !!(draft.photo || draft.note.trim());
+// `capture` ouvre directement l'appareil photo arrière ; l'autre entrée ouvre la photothèque
+const camInput = `<input type="file" id="photocam" accept="image/*" capture="environment">`;
+const galInput = `<input type="file" id="photo" accept="image/*">`;
+function captureHTML(showManual){
+  return `<section class="cap">
+    <label class="shutter" aria-label="Prendre une photo">${CAM}${camInput}</label>
+    <b class="captitle">Photographie ton assiette</b>
+    <span class="muted small">L'IA estime les aliments, les grammes et les macros.</span>
+    <div class="pills"><label class="pill">${IMG}Galerie${galInput}</label>${showManual ? `<button class="pill" id="manual">${PEN}Saisie manuelle</button>` : ""}</div>
+  </section>`;
+}
+function photoHTML(){
+  const d = draft;
+  return `<div class="photo${d.loading ? " busy" : ""}"><img src="${d.photo}" alt="Photo du repas">
+    ${d.loading ? "" : `<button class="x" id="rmphoto" aria-label="Retirer la photo">${XI}</button>
+    <div class="overlay"><label class="glass">${CAM}Reprendre${camInput}</label><label class="glass">${IMG}Galerie${galInput}</label></div>`}</div>`;
+}
 function addHTML(){
   const d = draft;
   const noKey = !S.settings.apiKey;
+  const showManual = !d.analysed && !d.items.length;
   const result = (d.analysed || d.items.length) ? `
     <section class="card">
       <label class="f">Nom du repas<input type="text" id="mealname" value="${esc(d.name)}" placeholder="ex. Poulet riz brocolis"></label>
       ${d.hyp ? `<div class="note">${esc(d.hyp)}${d.conf ? ` <span class="muted">· confiance ${esc(d.conf)}</span>` : ""}</div>` : ""}
       <div class="muted small">Change les grammes : les calories et macros suivent automatiquement.</div>
-      <div id="items">${d.items.map(itemHTML).join("")}</div>
-      <button class="btn ghost" id="additem">Ajouter un aliment</button>
-      <div class="savebar">
-        <div class="totals" id="totals">${totalsHTML()}</div>
-        <button class="btn" id="savemeal" ${d.items.length ? "" : "disabled"}>Ajouter au journal · ${dayLabel(curDate)}</button>
-      </div>
-    </section>` : "";
+    </section>
+    <div id="items">${d.items.map(itemHTML).join("")}</div>
+    <button class="btn ghost" id="additem">Ajouter un aliment</button>
+    <div class="savebar">
+      <div class="totals" id="totals">${totalsHTML()}</div>
+      <button class="btn" id="savemeal" ${d.items.length ? "" : "disabled"}>Ajouter au journal · ${dayLabel(curDate)}</button>
+    </div>` : "";
   return `
-  <div class="top"><div class="brand">Ajouter un repas</div></div>
+  <div class="top"><div><div class="title">Nouveau repas</div><div class="sub">Pour ${esc(dayLabel(curDate).toLowerCase())}</div></div></div>
   ${noKey ? `<div class="note">Pour l'analyse photo, il faut une clé API. <button class="link" data-go="settings">Ouvrir les Réglages</button>. La saisie manuelle marche sans clé.</div>` : ""}
-  <label class="drop${d.loading && d.photo ? " busy" : ""}" for="photo">
-    ${d.photo ? `<img src="${d.photo}" alt="Photo du repas"><span class="chg">Changer la photo</span>` : `<div class="cta"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><b>Photographier l'assiette</b><span class="small">ou choisir une photo</span></div>`}
-    <input type="file" id="photo" accept="image/*">
-  </label>
+  ${d.photo ? photoHTML() : captureHTML(showManual)}
   <section class="card">
     <div class="fl">Type de repas
       <div class="seg" role="radiogroup" aria-label="Type de repas">${TYPES.map(t => `<button type="button" role="radio" aria-checked="${t === d.type}" data-type="${t}">${SHORT[t]}</button>`).join("")}</div></div>
     <label class="f">Précisions (facultatif)<textarea id="note" placeholder="ex. 1 c. à s. d'huile d'olive, 200 g de riz cuit, sauce soja">${esc(d.note)}</textarea></label>
     <label class="switch"><span>Analyse approfondie<small>Plus lente, un peu plus précise</small></span><input type="checkbox" id="deep" ${S.settings.deep ? "checked" : ""}></label>
     ${d.error ? `<div class="err" role="alert">${esc(d.error)}</div>` : ""}
-    <div class="row">
-      <button class="btn" id="analyse" ${canAnalyse() ? "" : "disabled"}>${d.loading ? `<span class="spinner"></span>Analyse…` : d.analysed ? "Réanalyser" : "Analyser"}</button>
-      <button class="btn ghost" id="manual">Saisie manuelle</button>
-    </div>
-    ${d.loading ? `<div class="muted small" role="status">${S.settings.deep ? "Analyse approfondie : compte jusqu'à une minute." : "L'IA regarde ton assiette, quelques secondes."}</div>` : ""}
-    ${!d.loading && !noKey ? `<div class="muted small" id="ahint" ${d.photo || d.note.trim() ? "hidden" : ""}>Ajoute une photo ou une description pour lancer l'analyse.</div>` : ""}
-    ${d.photo || d.items.length ? `<button class="btn danger" id="reset">Recommencer</button>` : ""}
+    <button class="btn" id="analyse" ${canAnalyse() ? "" : "disabled"}>${d.loading ? `<span class="spinner"></span>Analyse en cours` : `${SPARK}${d.analysed ? "Réanalyser" : "Analyser mon repas"}`}</button>
+    ${d.loading ? `<div class="muted small" role="status" style="text-align:center">${S.settings.deep ? "Analyse approfondie : compte jusqu'à une minute." : "L'IA regarde ton assiette, quelques secondes."}</div>` : ""}
+    ${!d.loading && !noKey && !d.analysed ? `<div class="muted small" id="ahint" style="text-align:center" ${d.photo || d.note.trim() ? "hidden" : ""}>Ajoute une photo ou une description pour lancer l'analyse.</div>` : ""}
+    ${d.photo && showManual ? `<button class="btn ghost sm" id="manual">${PEN}Saisir à la main</button>` : ""}
+    ${d.photo || d.items.length ? `<button class="textbtn" id="reset">Tout recommencer</button>` : ""}
   </section>
   ${result}`;
 }
@@ -521,10 +617,10 @@ function historyHTML(){
   const first = ws[0], last = ws[ws.length-1];
   const delta = ws.length > 1 ? last.kg - first.kg : null;
   return `
-  <div class="top"><div class="brand">Historique</div></div>
+  <div class="top"><div><div class="title">Historique</div><div class="sub">Tes tendances récentes</div></div></div>
   <section class="card">
     <h2>Moyenne des 7 derniers jours</h2>
-    <div class="num" style="font-size:1.4rem;font-weight:600">${n ? `${fmt(sumK/n)} kcal · ${fmt(sumP/n)} g prot.` : "Pas encore assez de données"}</div>
+    <div class="num" style="font-size:1.5rem;font-weight:700;letter-spacing:-.02em">${n ? `${fmt(sumK/n)} kcal · ${fmt(sumP/n)} g prot.` : "Pas encore assez de données"}</div>
     <div class="muted small">Calculée sur les jours complets renseignés, sans aujourd'hui.</div>
   </section>
   <section class="card">
@@ -549,7 +645,7 @@ function historyHTML(){
 function settingsHTML(){
   const st = S.settings, g = st.goals;
   return `
-  <div class="top"><div class="brand">Réglages</div></div>
+  <div class="top"><div><div class="title">Réglages</div><div class="sub">Objectifs, IA et données</div></div></div>
   <section class="card">
     <h2>Objectifs quotidiens</h2>
     <div class="row">
@@ -576,8 +672,8 @@ function settingsHTML(){
     <h2>Données</h2>
     <div class="muted small">${S.meals.length} repas et ${S.weights.length} pesées enregistrés sur cet appareil. Exporte de temps en temps : si tu vides les données du navigateur, tout est perdu.</div>
     <div class="row"><button class="btn ghost" id="export">Exporter</button>
-      <label class="btn ghost" style="text-align:center" for="import">Importer<input type="file" id="import" accept="application/json,.json" hidden></label></div>
-    <button class="btn danger" id="wipe">${armedDelete === "wipe" ? "Toucher encore pour tout effacer" : "Tout effacer"}</button>
+      <label class="btn ghost" style="cursor:pointer" for="import">Importer<input type="file" id="import" accept="application/json,.json" hidden></label></div>
+    <button class="btn danger${armedDelete === "wipe" ? " armed" : ""}" id="wipe">${armedDelete === "wipe" ? "Toucher encore pour tout effacer" : "Tout effacer"}</button>
   </section>`;
 }
 function goalCheck(){
@@ -596,21 +692,31 @@ function bind(){
   on("#today","click", () => { if (curDate !== todayISO()){ curDate = todayISO(); armedDelete = null; render(); } });
   document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
   document.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
-    openMeal = openMeal === b.dataset.toggle ? null : b.dataset.toggle; render();
+    openMeal = openMeal === b.dataset.toggle ? null : b.dataset.toggle; armedDelete = null; render();
   }));
   document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
     const id = b.dataset.del;
     if (armedDelete !== id){ arm(id); render(); return; }
     S.meals = S.meals.filter(m => m.id !== id); armedDelete = null; if (openMeal === id) openMeal = null; save(); render(); toast("Repas supprimé");
   }));
+  document.querySelectorAll("[data-delphoto]").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.delphoto, key = "ph:" + id;
+    if (armedDelete !== key){ arm(key); render(); return; }
+    const m = S.meals.find(x => x.id === id); armedDelete = null;
+    if (m){ m.thumb = null; save(); }
+    render(); toast("Photo retirée");
+  }));
   // add
-  on("#photo","change", async e => {
+  const onPhoto = async e => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
     try { const img = await loadImage(file);
       draft.photo = toJpeg(img, 1280, 0.85, false); draft.thumb = toJpeg(img, 160, 0.7, true);
       draft.error = ""; render();
     } catch(err){ draft.error = err.message; render(); }
-  });
+  };
+  on("#photo","change", onPhoto);
+  on("#photocam","change", onPhoto);
+  on("#rmphoto","click", () => { draft.photo = null; draft.thumb = null; draft.error = ""; render(); });
   on("#note","input", e => {
     draft.note = e.target.value;
     const b = $("#analyse"); if (b) b.disabled = !canAnalyse();
@@ -657,7 +763,7 @@ function bind(){
   ["kcal","p","c","f"].forEach(k => on("#g-"+k, "input", goalCheck)); goalCheck();
   on("#showkey","click", e => {
     const i = $("#apikey"), show = i.type === "password";
-    i.type = show ? "text" : "password"; e.target.textContent = show ? "Masquer" : "Afficher";
+    i.type = show ? "text" : "password"; e.currentTarget.textContent = show ? "Masquer" : "Afficher";
   });
   on("#savesettings","click", () => {
     const st = S.settings;
@@ -706,7 +812,7 @@ document.addEventListener("touchend", e => {
   else if (curDate < todayISO()){ curDate = shift(curDate,1); armedDelete = null; render(); }
 }, { passive:true });
 
-render();
+render(); animateIn();
 if (!S.settings.apiKey && !S.meals.length) toast("Commence par ajouter ta clé DeepSeek dans Réglages.");
 </script>
 </body>
