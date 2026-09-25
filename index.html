@@ -302,10 +302,28 @@ body.noscroll{overflow:hidden}
 .wtop{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
 .wbig{font-size:2.3rem;font-weight:700;letter-spacing:-.03em;line-height:1}
 .wbig small{font-size:1rem;font-weight:500;color:var(--muted);letter-spacing:0}
-.spark{width:100%;height:72px;display:block}
-.spark path{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.wlist{display:flex;flex-direction:column;gap:8px;font-variant-numeric:tabular-nums}
-.wlist div{display:flex;justify-content:space-between;font-size:.92rem}
+.wpace{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ratechip{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:99px;background:var(--sunk);font-family:var(--display);font-weight:700;font-size:.9rem}
+.ratechip.up,.ratechip.down{background:var(--accent-soft);color:var(--accent)}
+.wchart{width:100%;height:auto;display:block;overflow:visible}
+.wgrid{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4}
+.wlbl{fill:var(--muted);font-size:10px;font-family:var(--body)}
+.wdot{fill:var(--muted);opacity:.45}
+.wtrend{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.wdates{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);padding-left:34px;margin-top:-6px}
+.wlegend{display:flex;gap:16px;font-size:.78rem;color:var(--muted)}
+.wlegend span{display:inline-flex;align-items:center;gap:6px}
+.lg-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);opacity:.6}
+.lg-line{width:16px;height:3px;border-radius:2px;background:var(--accent)}
+.wlist{display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.wlist>div{display:flex;justify-content:space-between;align-items:center;font-size:.92rem}
+.wlist>div>span:last-child{display:inline-flex;align-items:center;gap:2px}
+.wdel{width:40px;height:40px;border:none;background:none;color:var(--muted);display:grid;place-items:center;margin-right:-10px}
+.wdel svg{width:15px;height:15px}
+.ebig{display:flex;flex-direction:column;gap:2px}
+.ebig b{font-family:var(--display);font-size:2.3rem;line-height:1.05;letter-spacing:-.03em}
+.needs{display:flex;flex-direction:column;gap:10px}
+.need{display:flex;flex-direction:column;gap:5px}
 
 /* navigation flottante */
 nav.tabs{position:fixed;left:50%;transform:translateX(-50%);width:min(536px,calc(100% - 24px));bottom:calc(8px + env(safe-area-inset-bottom,0px));background:var(--surface);background:color-mix(in srgb,var(--surface) 86%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);border-radius:30px;box-shadow:var(--shadow),0 0 0 1px var(--line);display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;z-index:10}
@@ -339,7 +357,8 @@ nav.tabs .add[aria-current=page]{color:var(--accent)}
 "use strict";
 const KEY = "assiette.v1";
 const DEFAULTS = {
-  settings: { apiKey: "", baseUrl: "https://api.deepseek.com", model: "deepseek-flash", deep: false,
+  // rate : objectif de poids en kg par semaine (négatif = perte, 0 = maintien)
+  settings: { apiKey: "", baseUrl: "https://api.deepseek.com", model: "deepseek-flash", deep: false, rate: 0,
               goals: { kcal: 3000, p: 160, c: 380, f: 90 } },
   meals: [], weights: []
 };
@@ -1101,10 +1120,100 @@ function histReadout(d){
   return `<div><b>${esc(lbl)}</b><div class="muted small num">${t.kcal ? `${fmt(t.kcal)} kcal · P ${fmt(t.p)} · G ${fmt(t.c)} · L ${fmt(t.f)}` : "Rien de saisi"}</div></div>
     <button class="btn ghost sm" data-goto="${d}">Voir</button>`;
 }
-function sparkHTML(pts){
-  const lo = Math.min(...pts.map(w => w.kg)), hi = Math.max(...pts.map(w => w.kg)), span = hi - lo || 1;
-  const d = pts.map((w,i) => `${i ? "L" : "M"}${(i/(pts.length-1)*100).toFixed(2)} ${(hi === lo ? 50 : 88 - (w.kg-lo)/span*76).toFixed(2)}`).join("");
-  return `<svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Courbe de poids"><path d="${d}" vector-effect="non-scaling-stroke"/></svg>`;
+/* ---------- poids : tendance, rythme ---------- */
+const DAY = 864e5, KCAL_KG = 7700;   // énergie d'1 kg de variation de poids corporel (approximation classique)
+const dnum = s => Math.round(parseISO(s).getTime() / DAY);   // numéro de jour, insensible au changement d'heure
+const avg = a => a.reduce((t, x) => t + x, 0) / a.length;
+const weightSeries = () => [...S.weights].sort((a,b) => a.date.localeCompare(b.date));
+// tendance lissée : moyenne mobile exponentielle à 10 % par jour, adaptée aux pesées irrégulières
+function trendSeries(ws){
+  let t = null, prev = 0;
+  return ws.map(w => { const d = dnum(w.date);
+    t = t === null ? w.kg : t + (1 - Math.pow(0.9, d - prev)) * (w.kg - t);
+    prev = d; return { date:w.date, kg:w.kg, trend:t }; });
+}
+// pente en kg par jour (moindres carrés) sur des pesées
+function slope(ws){
+  if (ws.length < 2) return null;
+  const xs = ws.map(w => dnum(w.date)), ys = ws.map(w => w.kg), mx = avg(xs), my = avg(ys);
+  let n = 0, d = 0; xs.forEach((x, i) => { n += (x - mx) * (ys[i] - my); d += (x - mx) ** 2; });
+  return d ? n / d : null;
+}
+// fenêtre de 28 jours : rythme de poids fiable dès 3 pesées sur au moins 10 jours
+function weightStats(){
+  const ws = weightSeries(); if (!ws.length) return null;
+  const tr = trendSeries(ws), from = dnum(todayISO()) - 28;
+  const recent = ws.filter(w => dnum(w.date) >= from);
+  const span = recent.length ? dnum(recent[recent.length-1].date) - dnum(recent[0].date) : 0;
+  const perDay = recent.length >= 3 && span >= 10 ? slope(recent) : null;
+  return { ws, tr, last: tr[tr.length-1], perWeek: perDay === null ? null : perDay * 7 };
+}
+// rythmes en kg par semaine : jusqu'à 2 décimales (0,25 ne doit pas devenir 0,3)
+const kg2 = n => n.toLocaleString("fr-FR", { minimumFractionDigits:1, maximumFractionDigits:2 });
+const signed = (n, unit) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${kg2(Math.abs(Math.round(n * 100) / 100))} ${unit}`;
+let wPeriod = 90;   // période du graphique de poids, en jours (0 = tout)
+function weightChartHTML(tr){
+  const end = dnum(todayISO()), first = dnum(tr[0].date);
+  const start = wPeriod ? Math.max(end - wPeriod, first) : first;   // pas de vide avant la première pesée
+  const pts = tr.filter(p => dnum(p.date) >= start);
+  if (pts.length < 2) return `<div class="muted small">Pas assez de pesées sur cette période.</div>`;
+  const vals = pts.flatMap(p => [p.kg, p.trend]);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max(.3, (hi - lo) * .12); lo -= pad; hi += pad;
+  const W = 340, H = 150, L = 34, x = d => L + (dnum(d) - start) / Math.max(1, end - start) * (W - L - 6), y = v => 8 + (hi - v) / (hi - lo) * (H - 16);
+  const grid = [0, .5, 1].map(f => { const v = hi - f * (hi - lo), yy = y(v).toFixed(1);
+    return `<line class="wgrid" x1="${L}" x2="${W}" y1="${yy}" y2="${yy}"/><text class="wlbl" x="${L - 5}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end">${kg1(v)}</text>`; }).join("");
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(p.date).toFixed(1)} ${y(p.trend).toFixed(1)}`).join("");
+  const dots = pts.map(p => `<circle class="wdot" cx="${x(p.date).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="3.2"/>`).join("");
+  const fmtD = n => new Date(n * DAY).toLocaleDateString("fr-FR", { day:"numeric", month:"short" });
+  return `<svg class="wchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Poids : pesées et tendance lissée">${grid}${dots}<path class="wtrend" d="${line}"/></svg>
+    <div class="wdates"><span>${fmtD(start)}</span><span>Aujourd'hui</span></div>`;
+}
+
+/* ---------- dépense réelle et objectif adaptatif ---------- */
+// dépense = apports moyens − variation de poids × 7 700 kcal/kg, sur les 28 derniers jours (sans aujourd'hui)
+const MIN_DAY_KCAL = 800;   // en dessous, la journée est jugée incomplète (repas oubliés) et ignorée
+function energyStats(){
+  const today = todayISO(), N = 28, from = dnum(today) - N;
+  const intakes = []; for (let i = 1; i <= N; i++){ const k = dayTotals(shift(today, -i)).kcal; if (k >= MIN_DAY_KCAL) intakes.push(k); }
+  const ws = weightSeries().filter(w => dnum(w.date) >= from);
+  const span = ws.length ? dnum(ws[ws.length-1].date) - dnum(ws[0].date) : 0;
+  const ready = intakes.length >= 10 && ws.length >= 4 && span >= 14;
+  const intake = intakes.length ? avg(intakes) : 0, perDay = ws.length >= 2 ? slope(ws) : null;
+  const tdee = ready && perDay !== null ? intake - perDay * KCAL_KG : null;
+  return { ready, days: intakes.length, weighIns: ws.length, span, intake, perDay, tdee, plausible: tdee !== null && tdee >= 1200 && tdee <= 6000 };
+}
+const PLANS = [["loss","Perdre"],["keep","Maintenir"],["gain","Prendre"]];
+function energyHTML(){
+  const e = energyStats(), g = S.settings.goals, rate = S.settings.rate || 0;
+  const mode = rate < 0 ? "loss" : rate > 0 ? "gain" : "keep", mag = Math.abs(rate) || .25;
+  const plan = `<div class="seg" style="grid-template-columns:repeat(3,1fr)" role="radiogroup" aria-label="Ton objectif de poids">${PLANS.map(([k, l]) =>
+      `<button type="button" role="radio" aria-checked="${k === mode}" data-plan="${k}">${l}</button>`).join("")}</div>
+    ${mode === "keep" ? "" : `<div class="seg" style="grid-template-columns:repeat(2,1fr)" role="radiogroup" aria-label="Rythme visé">${[.25, .5].map(r =>
+      `<button type="button" role="radio" aria-checked="${r === mag}" data-rate="${r}">${kg2(r)} kg / semaine</button>`).join("")}</div>`}`;
+  let body;
+  if (!e.ready){
+    const need = [[e.days, 10, "jours de repas complets"], [e.weighIns, 4, "pesées"], [e.span, 14, "jours entre la 1re et la dernière pesée"]];
+    body = `<div class="muted small">Il faut quelques semaines de données sur les 28 derniers jours :</div>
+      <div class="needs">${need.map(([v, n, l]) => `<div class="need"><div class="small"><b class="num">${Math.min(v, n)}/${n}</b> ${l}</div>
+        <div class="bar"><span style="width:${Math.min(100, v / n * 100)}%"></span></div></div>`).join("")}</div>
+      <div class="muted small">Note tous tes repas et pèse-toi 2 fois par semaine, le matin à jeun.</div>`;
+  } else if (!e.plausible){
+    body = `<div class="err">Estimation incohérente (${fmt(e.tdee)} kcal/jour). Des repas manquent sans doute dans le journal : complète-les, ou attends quelques jours de plus.</div>`;
+  } else {
+    const target = Math.max(1200, Math.round((e.tdee + rate * KCAL_KG / 7) / 50) * 50), diff = target - g.kcal;
+    const newC = Math.max(0, Math.round(g.c + diff / 4));
+    body = `<div class="ebig"><span class="lbl">Dépense réelle estimée</span><b class="num">${fmt(e.tdee)}</b><span class="muted small">kcal par jour</span></div>
+      <div class="muted small">Sur 4 semaines : ${fmt(e.intake)} kcal mangées en moyenne (${e.days} jours complets), poids ${signed(e.perDay * 7, "kg / semaine")}.</div>
+      <div class="note">Pour ${rate ? `${rate > 0 ? "prendre" : "perdre"} ${kg2(Math.abs(rate))} kg par semaine` : "garder ton poids"} : <b class="num">${fmt(target)} kcal par jour</b>${Math.abs(diff) < 100 ? `. Ton objectif actuel (${fmt(g.kcal)} kcal) est bon.` : `, au lieu de ${fmt(g.kcal)}.`}</div>
+      ${Math.abs(diff) >= 100 ? `<button class="btn" id="applytarget" data-kcal="${target}" data-c="${newC}">Appliquer ${fmt(target)} kcal</button>
+        <div class="muted small" style="text-align:center">Protéines et lipides inchangés, glucides ${fmt(g.c)}&nbsp;→&nbsp;${fmt(newC)}&nbsp;g.</div>` : ""}`;
+  }
+  return `<section class="card" id="energy">
+    <h2>Dépense et objectif</h2>
+    ${plan}
+    ${body}
+    <div class="muted small">Calcul : apports moyens moins la variation de poids (7 700 kcal par kg). Les jours à moins de ${MIN_DAY_KCAL} kcal sont ignorés. Refais le point chaque semaine.</div>
+  </section>`;
 }
 function historyHTML(){
   const g = S.settings.goals, today = todayISO(), sel = histSel || today;
@@ -1116,9 +1225,13 @@ function historyHTML(){
   const cols = days.map((d, i) => { const t = tots[i];
     return `<button class="col${t.kcal ? "" : " none"}${t.kcal > g.kcal*1.1 ? " over" : ""}${d === sel ? " sel" : ""}" data-day="${d}" aria-label="${esc(dayLabel(d))} : ${fmt(t.kcal)} kcal"><i${t.kcal ? ` style="height:${t.kcal/max*100}%"` : ""}></i></button>`; }).join("");
   const letters = days.map(d => `<span${d === today ? ` class="today"` : ""}>${parseISO(d).toLocaleDateString("fr-FR", { weekday:"narrow" })}</span>`).join("");
-  const ws = [...S.weights].sort((a,b) => a.date.localeCompare(b.date));
-  const first = ws[0], last = ws[ws.length-1];
-  const delta = ws.length > 1 ? last.kg - first.kg : null;
+  const w = weightStats(), rate = S.settings.rate || 0;
+  const pace = w && w.perWeek !== null
+    ? `<div class="wpace"><span class="ratechip${Math.abs(w.perWeek) < .05 ? "" : w.perWeek > 0 ? " up" : " down"}">${Math.abs(w.perWeek) < .05 ? "Stable" : signed(w.perWeek, "kg / sem.")}</span>
+        <span class="muted small">sur 4 semaines${rate ? ` · objectif ${signed(rate, "kg / sem.")}` : ""}</span></div>
+      <div class="muted small">À ce rythme : <b class="num">${kg1(w.last.trend + w.perWeek * 4)} kg</b> dans 4 semaines.</div>`
+    : w ? `<div class="muted small">Le rythme s'affiche dès 3 pesées sur au moins 10 jours.</div>` : "";
+  const periods = [[30,"1 mois"],[90,"3 mois"],[0,"Tout"]];
   return `
   <div class="top"><div><div class="title">Historique</div><div class="sub">Tes tendances récentes</div></div></div>
   <section class="card">
@@ -1133,15 +1246,23 @@ function historyHTML(){
     <div class="days">${letters}</div>
     <div class="muted small">Ligne pointillée : ton objectif de ${fmt(g.kcal)} kcal. Touche une barre pour le détail.</div>
   </section>
-  <section class="card">
+  <section class="card" id="weight">
     <h2>Poids</h2>
-    ${last ? `<div class="wtop"><div class="wbig num">${kg1(last.kg)}<small> kg</small></div>
-      ${delta !== null ? `<div class="small" style="text-align:right"><b class="num">${delta > 0 ? "+" : ""}${kg1(delta)} kg</b><br><span class="muted">depuis le ${parseISO(first.date).toLocaleDateString("fr-FR")}</span></div>` : ""}</div>` : ""}
-    ${ws.length > 1 ? sparkHTML(ws.slice(-30)) : ""}
-    <div class="row"><input type="number" inputmode="decimal" step="0.1" id="wkg" placeholder="ex. 78.4" aria-label="Poids en kg" style="flex:2 1 120px">
-      <button class="btn" id="wsave" style="flex:1 1 100px">Enregistrer</button></div>
-    <div class="wlist">${[...ws].reverse().slice(0,5).map(w => `<div><span class="muted">${parseISO(w.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</span><span>${kg1(w.kg)} kg</span></div>`).join("") || `<div class="muted small">Pèse-toi le matin à jeun, 1 à 2 fois par semaine, pour suivre la tendance.</div>`}</div>
-  </section>`;
+    ${w ? `<div class="wtop"><div><span class="lbl">Tendance</span><div class="wbig num">${kg1(w.last.trend)}<small> kg</small></div></div>
+      <div class="small muted" style="text-align:right">Dernière pesée<br><b class="num" style="color:var(--ink)">${kg1(w.last.kg)} kg</b> · ${esc(dayLabel(w.last.date).toLowerCase())}</div></div>
+      ${pace}
+      ${w.ws.length > 1 ? `<div class="seg" style="grid-template-columns:repeat(3,1fr)" role="tablist" aria-label="Période">${periods.map(([p, l]) =>
+        `<button role="tab" aria-selected="${p === wPeriod}" data-wperiod="${p}">${l}</button>`).join("")}</div>
+      ${weightChartHTML(w.tr)}
+      <div class="wlegend"><span><i class="lg-dot"></i>Pesées</span><span><i class="lg-line"></i>Tendance lissée</span></div>` : ""}` : ""}
+    <div class="row2"><label class="f">Poids (kg)<input type="number" inputmode="decimal" step="0.1" id="wkg" placeholder="ex. 78.4"></label>
+      <label class="f">Date<input type="date" id="wdate" max="${todayISO()}" value="${todayISO()}"></label></div>
+    <button class="btn" id="wsave">Enregistrer la pesée</button>
+    <div class="wlist">${w ? [...w.ws].reverse().slice(0, 6).map(x => `<div><span class="muted">${parseISO(x.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</span>
+      <span class="num">${kg1(x.kg)} kg<button class="wdel" data-wdel="${x.date}" aria-label="Supprimer la pesée du ${esc(dayLabel(x.date))}">${XI}</button></span></div>`).join("")
+      : `<div class="muted small">Pèse-toi le matin à jeun, 1 à 2 fois par semaine : la tendance lissée gomme les variations d'un jour à l'autre (eau, repas).</div>`}</div>
+  </section>
+  ${energyHTML()}`;
 }
 
 /* ---------- settings ---------- */
@@ -1308,8 +1429,32 @@ function bind(){
   on("#hread","click", e => { const b = e.target.closest("[data-goto]"); if (b){ curDate = b.dataset.goto; go("journal"); } });
   on("#wsave","click", () => {
     const kg = num($("#wkg").value); if (!kg || kg < 25 || kg > 300){ toast("Entre un poids en kg, ex. 78.4"); return; }
-    const d = todayISO(); S.weights = S.weights.filter(w => w.date !== d); S.weights.push({ date:d, kg });
-    save(); render(); toast("Poids enregistré");
+    const d = $("#wdate").value || todayISO();
+    if (d > todayISO()){ toast("Choisis aujourd'hui ou une date passée."); return; }
+    const old = S.weights.find(w => w.date === d);
+    S.weights = S.weights.filter(w => w.date !== d); S.weights.push({ date:d, kg });
+    save(); render(); toast(old ? `Pesée du ${dayLabel(d).toLowerCase()} remplacée` : "Poids enregistré");
+  });
+  document.querySelectorAll("[data-wdel]").forEach(b => b.addEventListener("click", () => {
+    const w = S.weights.find(x => x.date === b.dataset.wdel); if (!w) return;
+    S.weights = S.weights.filter(x => x !== w); save(); render();
+    toast("Pesée supprimée", { label:"Annuler", fn:() => { S.weights.push(w); save(); render(); } });
+  }));
+  document.querySelectorAll("[data-wperiod]").forEach(b => b.addEventListener("click", () => { wPeriod = +b.dataset.wperiod; render(); }));
+  // objectif de poids : signe = sens, valeur = kg par semaine
+  document.querySelectorAll("[data-plan]").forEach(b => b.addEventListener("click", () => {
+    const mag = Math.abs(S.settings.rate || 0) || .25;
+    S.settings.rate = b.dataset.plan === "keep" ? 0 : b.dataset.plan === "gain" ? mag : -mag; save(); render();
+  }));
+  document.querySelectorAll("[data-rate]").forEach(b => b.addEventListener("click", () => {
+    S.settings.rate = Math.sign(S.settings.rate || 1) * +b.dataset.rate; save(); render();
+  }));
+  on("#applytarget","click", e => {
+    const g = S.settings.goals, before = { ...g };
+    g.kcal = +e.currentTarget.dataset.kcal; g.c = +e.currentTarget.dataset.c;
+    if (!save()){ Object.assign(g, before); return; }
+    render();
+    toast(`Objectif : ${fmt(g.kcal)} kcal par jour`, { label:"Annuler", fn:() => { Object.assign(S.settings.goals, before); save(); render(); } });
   });
   // settings
   ["kcal","p","c","f"].forEach(k => on("#g-"+k, "input", goalCheck)); goalCheck();

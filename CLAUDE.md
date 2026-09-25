@@ -36,6 +36,8 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 - Journal : un repas déplié propose Modifier (`editMeal`), Refaire (copie aujourd'hui, type selon l'heure) et Favori (`toggleFav`). Un jour passé propose « Copier ces repas à aujourd'hui » ; aujourd'hui vide propose « Copier les repas d'hier ». Les copies gardent les heures d'origine.
 - Modification : `draft.editId` passe l'écran d'ajout en mode modification (`editHTML`) ; `saveMeal()` remplace alors le repas (même `id`). Quitter l'onglet abandonne la modification (`go()`). Date et heure (`#mdate`, `#mtime`) sont modifiables pour tout repas ; par défaut, l'heure actuelle aujourd'hui, sinon l'heure habituelle du type (`TYPICAL`). Pas de date future.
 - `toast(msg, { label, fn })` affiche un bouton d'action (« Annuler ») pendant 5 s.
+- Poids (carte `#weight` de l'historique) : `trendSeries()` calcule une tendance lissée (moyenne mobile exponentielle à 10 % par jour, tenant compte des jours sans pesée) ; `weightStats()` donne le rythme en kg par semaine par moindres carrés (`slope`) sur les pesées des 28 derniers jours, dès 3 pesées sur au moins 10 jours, et la projection à 4 semaines. Graphique SVG `weightChartHTML` (pesées en points, tendance en ligne), période `wPeriod` (30, 90 ou 0 = tout). Une pesée peut être saisie pour une date passée (remplace celle du jour) et supprimée avec « Annuler ».
+- Dépense et objectif adaptatif (carte `#energy`, `energyStats`) : sur les 28 derniers jours sans aujourd'hui, dépense = apports moyens des jours complets (≥ `MIN_DAY_KCAL`, 800 kcal) − pente du poids × `KCAL_KG` (7 700 kcal/kg). Il faut au moins 10 jours complets, 4 pesées et 14 jours entre la première et la dernière ; hors de 1 200 à 6 000 kcal, l'estimation est jugée incohérente. Objectif conseillé = dépense + `settings.rate` × 7 700 / 7, arrondi à 50 kcal ; « Appliquer » (si l'écart dépasse 100 kcal) change `goals.kcal` et reporte l'écart sur les glucides (protéines et lipides inchangés), avec « Annuler ».
 - Rendu : `render()` remplace entièrement `#app.innerHTML` avec la vue courante (`journalHTML`, `addHTML`, `historyHTML`, `settingsHTML`), puis appelle `bind()`, qui rattache tous les écouteurs. Tout nouvel élément interactif doit être branché dans `bind()`.
 - Exception au re-rendu complet : dans la liste d'aliments du brouillon, la saisie met à jour les champs voisins et `#totals` directement, sans `render()`, pour ne pas perdre le focus du clavier. Conserver ce comportement.
 - Navigation : barre du bas `nav.tabs` avec `data-view`, et `go(view)`.
@@ -46,6 +48,7 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 {
   settings: {
     apiKey: "", baseUrl: "https://api.deepseek.com", model: "deepseek-flash", deep: false,
+    rate: 0,   // objectif de poids en kg par semaine : < 0 perte, 0 maintien, > 0 prise (±0,25 ou ±0,5)
     goals: { kcal: 3000, p: 160, c: 380, f: 90 }
   },
   meals: [{
@@ -117,7 +120,6 @@ sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' > /tmp/app.js && node
 
 ## Pistes d'évolution
 
-- Courbe de poids avec moyenne mobile sur 7 jours, puis objectifs adaptatifs (dépense réelle estimée à partir du poids et des apports).
 - Rappel d'export automatique, sauvegarde hors de l'appareil.
 - Vérification 4/4/9 des aliments renvoyés par l'IA, table Ciqual intégrée, recherche d'aliment par nom.
 - « Annuler » à la place de la double confirmation pour la suppression d'un repas.
