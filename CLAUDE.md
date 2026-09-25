@@ -9,7 +9,10 @@ index.html            # toute l'appli : HTML, CSS et JS inline
 manifest.webmanifest  # PWA : nom, couleurs, icônes, display standalone
 icon-192.png          # icône (aussi apple-touch-icon et favicon)
 icon-512.png          # icône maskable
+ciqual.json           # table Ciqual 2025 réduite (≈ 240 Ko, 70 Ko compressé), chargée à la demande
 ```
+
+`ciqual.json` est la seule exception au « tout dans index.html » : ce sont des données, pas du code. Format `{ source, cols: ["code","nom","kcal","p","c","f"], aliments: [[…], …] }`, valeurs pour 100 g. Source : fichier `Table Ciqual 2025_FR_2025_11_03.xlsx` de l'Anses (Recherche Data Gouv, doi:10.57745/RDMHWY, Licence Ouverte 2.0), colonnes « Energie, Règlement UE N° 1169/2011 (kcal/100 g) » (à défaut « N x facteur Jones »), « Protéines, N x facteur de Jones », « Glucides », « Lipides ». « traces » et « < x » valent 0 ; les aliments sans énergie calculable sont ignorés. Pour une nouvelle version de Ciqual, regénérer le fichier au même format. La mention des sources (Ciqual, Open Food Facts) figure en bas des Réglages et dans le sélecteur : la conserver.
 
 Pas de build, pas de dépendances, pas de framework. Vanilla JS en `"use strict"`. Ressources externes :
 - les polices Google Fonts (Sora pour les titres et chiffres, Figtree pour le texte), avec repli sur les polices système ;
@@ -35,6 +38,11 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 - Repas rapides (carte `#quick` de l'écran d'ajout, `quickHTML`, onglet dans `quickTab`) : Favoris (`S.favs`), Récents (`recentMeals()`, repas distincts selon `sig()`, hors favoris) et Produits (`S.scanned`). « + » enregistre tout de suite une copie (`logCopies`, avec « Annuler » dans le toast) en gardant le type d'origine, sauf si l'utilisateur a choisi un type (`draft.typeSet`) ; toucher le nom charge le repas dans le brouillon (`loadIntoDraft`) pour l'ajuster. Un produit s'ajoute à `draft.products`. `lookupOFF` lit d'abord `S.scanned` : un produit connu ne coûte aucun appel réseau.
 - Journal : un repas déplié propose Modifier (`editMeal`), Refaire (copie aujourd'hui, type selon l'heure) et Favori (`toggleFav`). Un jour passé propose « Copier ces repas à aujourd'hui » ; aujourd'hui vide propose « Copier les repas d'hier ». Les copies gardent les heures d'origine.
 - Modification : `draft.editId` passe l'écran d'ajout en mode modification (`editHTML`) ; `saveMeal()` remplace alors le repas (même `id`). Quitter l'onglet abandonne la modification (`go()`). Date et heure (`#mdate`, `#mtime`) sont modifiables pour tout repas ; par défaut, l'heure actuelle aujourd'hui, sinon l'heure habituelle du type (`TYPICAL`). Pas de date future.
+- Table Ciqual (section « table Ciqual » du JS) : `loadCiqual()` charge `ciqual.json` une fois (lancé en parallèle de l'appel au modèle). Recherche `searchCiqual` par mots normalisés (`ctoks` : minuscules, sans accents, sans mots vides, pluriel retiré ; `csame` accepte cuit/cuite) avec score couverture/précision, bonus au premier mot, aux entrées génériques (« aliment moyen ») et à la tête du nom avant la virgule (`head`).
+- Analyse : le modèle renvoie pour chaque aliment un intitulé `ciqual`. `pickCiqual` n'applique la table que si tous les mots sont trouvés et que les kcal pour 100 g restent proches de l'estimation de l'IA (±35 %, départage cru/cuit à ±25 %) ; si les kcal de l'IA contredisent ses macros, ses macros servent de repère. Sinon l'aliment garde l'estimation (`ai: true`). Les aliments tirés de Ciqual portent `src: { code, nom, kcal }` et leurs macros suivent les grammes. Ordre de priorité : code-barres, Ciqual, estimation de l'IA.
+- Chaque aliment affiche son origine (`srcHTML`) ; toucher la ligne ouvre le sélecteur Ciqual (`openPicker("item", i)`, panneau hors de `#app`, retour Android géré). « Ajouter un aliment » et « À la main » ouvrent le même sélecteur en mode ajout (`openPicker("add")`, 100 g par défaut, « Saisir à la main » pour une ligne vide). Modifier une macro à la main retire `src`/`code`.
+- Pas d'avertissement de cohérence calories/macros affiché (retiré à la demande de l'utilisateur). `atwater`/`incoherent` ne servent qu'en interne, comme repère pour `pickCiqual`.
+- Question de l'IA : champ `question` du JSON ; affichée au-dessus du résultat, la réponse est ajoutée aux précisions puis l'analyse est relancée.
 - `toast(msg, { label, fn })` affiche un bouton d'action (« Annuler ») pendant 5 s.
 - Poids (carte `#weight` de l'historique) : `trendSeries()` calcule une tendance lissée (moyenne mobile exponentielle à 10 % par jour, tenant compte des jours sans pesée) ; `weightStats()` donne le rythme en kg par semaine par moindres carrés (`slope`) sur les pesées des 28 derniers jours, dès 3 pesées sur au moins 10 jours, et la projection à 4 semaines. Graphique SVG `weightChartHTML` (pesées en points, tendance en ligne), période `wPeriod` (30, 90 ou 0 = tout). Une pesée peut être saisie pour une date passée (remplace celle du jour) et supprimée avec « Annuler ».
 - Dépense et objectif adaptatif (carte `#energy`, `energyStats`) : sur les 28 derniers jours sans aujourd'hui, dépense = apports moyens des jours complets (≥ `MIN_DAY_KCAL`, 800 kcal) − pente du poids × `KCAL_KG` (7 700 kcal/kg). Il faut au moins 10 jours complets, 4 pesées et 14 jours entre la première et la dernière ; hors de 1 200 à 6 000 kcal, l'estimation est jugée incohérente. Objectif conseillé = dépense + `settings.rate` × 7 700 / 7, arrondi à 50 kcal ; « Appliquer » (si l'écart dépasse 100 kcal) change `goals.kcal` et reporte l'écart sur les glucides (protéines et lipides inchangés), avec « Annuler ».
@@ -86,8 +94,8 @@ GitHub Pages depuis la branche `main`, à la racine du dépôt. Aucune étape de
 JSON attendu du modèle :
 
 ```json
-{ "plat": "…", "items": [{ "nom": "…", "grammes": 0, "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0 }],
-  "hypotheses": "…", "confiance": "faible|moyenne|haute" }
+{ "plat": "…", "items": [{ "nom": "…", "grammes": 0, "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0, "ciqual": "…", "code": "…" }],
+  "hypotheses": "…", "confiance": "faible|moyenne|haute", "question": "" }
 ```
 
 `normItem` convertit vers le format interne `{ nom, g, kcal, p, c, f, ratio }`. `ratio` contient les valeurs par gramme : quand on change les grammes, les macros suivent proportionnellement. Quand on modifie une macro à la main, `ratio` est recalculé. `ratio` est retiré avant l'enregistrement.
@@ -124,5 +132,4 @@ sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' > /tmp/app.js && node
 ## Pistes d'évolution
 
 - Synchronisation automatique hors de l'appareil (nécessite un serveur ou un stockage en ligne).
-- Vérification 4/4/9 des aliments renvoyés par l'IA, table Ciqual intégrée, recherche d'aliment par nom.
 - « Annuler » à la place de la double confirmation pour la suppression d'un repas.

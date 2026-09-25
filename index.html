@@ -267,8 +267,24 @@ body.noscroll{overflow:hidden}
 .item{display:flex;flex-direction:column;gap:10px;background:var(--surface);border-radius:22px;box-shadow:var(--shadow);padding:14px}
 .item .head{display:flex;gap:8px;align-items:center}
 .item .head input{flex:1;font-weight:600}
-.item .src{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;color:var(--accent)}
-.item .src svg{width:16px;height:16px}
+.item .src{display:flex;align-items:center;gap:6px;width:100%;min-height:32px;border:none;background:none;padding:0;text-align:left;font-size:.78rem;font-weight:600;color:var(--accent)}
+.item .src span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .src svg{width:16px;height:16px;flex:none}
+.item .src.other{color:var(--muted)}
+.ask{box-shadow:var(--shadow),inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 55%,transparent)}
+.pw input{flex:1;min-width:0}
+
+/* sélecteur d'aliment */
+.sheet-bg{position:fixed;inset:0;z-index:40;background:var(--cam-scrim);animation:fadein .2s}
+.sheet{position:fixed;z-index:41;left:0;right:0;bottom:0;top:calc(48px + env(safe-area-inset-top,0px));max-width:560px;margin:0 auto;background:var(--surface);border-radius:26px 26px 0 0;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));animation:sheetin .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheetin{from{transform:translateY(40px);opacity:0}}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sheet-h b{font-family:var(--display);font-size:1.15rem}
+.sheet input[type=search]{width:100%;border:none;background:var(--sunk);border-radius:14px;padding:13px 14px;font-size:16px;color:var(--ink);-webkit-appearance:none;appearance:none}
+.pklist{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px}
+.pkrow{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;border:none;background:var(--sunk);border-radius:16px;padding:10px 14px;text-align:left;color:var(--ink)}
+.pkrow b{font-weight:600;font-size:.95rem;line-height:1.3}
+.pkrow:active{transform:scale(.99)}
 .item .head .iconbtn{width:44px;height:44px;border-radius:50%;border:none;background:var(--sunk);display:grid;place-items:center;flex:none;color:var(--muted)}
 .item .head .iconbtn svg{width:18px;height:18px}
 .item .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -452,6 +468,7 @@ const PLUS = ic(`<path d="M12 5v14M5 12h14"/>`, 2.2), CHECK = ic(`<path d="M5 12
 const REDO = ic(`<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/>`);
 const STARP = `<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>`;
 const STAR = ic(STARP), STARF = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">${STARP}</svg>`;
+const TABLE = ic(`<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 10h16M10 4v16"/>`);
 const SHIELD = ic(`<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>`);
 const SHARE = ic(`<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>`);
 const BAR = ic(`<path d="M3 7V5a1 1 0 0 1 1-1h2M18 4h2a1 1 0 0 1 1 1v2M21 17v2a1 1 0 0 1-1 1h-2M6 20H4a1 1 0 0 1-1-1v-2"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8M15 8v5"/>`);
@@ -469,7 +486,7 @@ const MAXP = 6;         // photos max par repas
 // editId : id du repas enregistré en cours de modification (null pour un nouveau repas)
 // date, time : null = valeurs par défaut (jour affiché, heure actuelle ou heure habituelle du type)
 // thumb : miniature reprise d'un repas existant (modification, repas rapide)
-function newDraft(){ return { editId:null, date:null, time:null, thumb:null, photos:[], products:[], note:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
+function newDraft(){ return { editId:null, date:null, time:null, thumb:null, photos:[], products:[], note:"", question:"", type:defaultType(), items:[], name:"", hyp:"", conf:"", error:"", loading:false, analysed:false }; }
 function arm(id){
   armedDelete = id; clearTimeout(armT);
   armT = setTimeout(() => { if (armedDelete === id){ armedDelete = null; render(); } }, 4000);
@@ -629,13 +646,17 @@ const TYPES = ["Petit-déjeuner","Déjeuner","Collation","Dîner"];
 function itemHTML(it, i){
   const f = (k, lbl, step) => `<label>${lbl}<input type="number" inputmode="decimal" step="${step}" min="0" id="it-${i}-${k}" data-i="${i}" data-k="${k}" value="${it[k] ? r0(it[k]*10)/10 : ""}"></label>`;
   return `<div class="item">
-    ${it.info ? `<div class="src">${BAR}${esc(it.info)}</div>` : ""}
+    ${srcHTML(it, i)}
     <div class="head"><input type="text" id="it-${i}-nom" data-i="${i}" data-k="nom" value="${esc(it.nom)}" placeholder="Aliment" aria-label="Nom de l'aliment">
       <button class="iconbtn" data-rm="${i}" aria-label="Retirer cet aliment">${XI}</button></div>
-    <div class="grid">${f("g","Grammes","1")}${f("kcal","kcal","1")}${f("p","Prot.","0.1")}${f("c","Gluc.","0.1")}${f("f","Lip.","0.1")}</div>
-  </div>`;
+    <div class="grid">${f("g","Grammes","1")}${f("kcal","kcal","1")}${f("p","Prot.","0.1")}${f("c","Gluc.","0.1")}${f("f","Lip.","0.1")}</div>  </div>`;
 }
-function totalsHTML(){
+// origine des valeurs : code-barres, table Ciqual, estimation de l'IA ou saisie ; un tap ouvre le sélecteur Ciqual
+function srcHTML(it, i){
+  if (it.code) return `<div class="src" id="src-${i}">${BAR}<span>${esc(it.info || "Code-barres")}</span></div>`;
+  if (it.src) return `<button class="src" id="src-${i}" data-pick="${i}">${TABLE}<span>Ciqual · ${esc(it.src.nom)} · ${fmt(it.src.kcal)} kcal/100 g</span>${RIGHT}</button>`;
+  return `<button class="src other" id="src-${i}" data-pick="${i}">${it.ai ? SPARK : PEN}<span>${it.ai ? "Estimation de l'IA" : "Valeurs saisies"} · chercher dans Ciqual</span>${RIGHT}</button>`;
+}function totalsHTML(){
   const t = totals(draft.items);
   return `<span><b>${fmt(t.kcal)}</b> kcal</span><span style="color:var(--prot)">P ${fmt(t.p)} g</span><span style="color:var(--carb)">G ${fmt(t.c)} g</span><span style="color:var(--fat)">L ${fmt(t.f)} g</span>`;
 }
@@ -743,11 +764,21 @@ function addHTML(){
   const noKey = !S.settings.apiKey;
   const showManual = !d.analysed && !d.items.length;
   const day = d.date || curDate;
+  const nC = d.items.filter(i => i.src).length, nB = d.items.filter(i => i.code).length, nA = d.items.filter(i => i.ai && !i.src).length;
+  const sources = d.analysed && d.items.length ? [nC && `${nC} avec la table Ciqual`, nB && `${nB} par code-barres`, nA && `${nA} estimé${nA > 1 ? "s" : ""} par l'IA`].filter(Boolean).join(", ") : "";
   const result = (d.analysed || d.items.length) ? `
+    ${d.question && !d.loading ? `<section class="card ask" role="status">
+      <div class="sect2"><h2>L'IA a une question</h2><span class="muted small">pour affiner</span></div>
+      <div>${esc(d.question)}</div>
+      <div class="pw"><input type="text" id="askin" enterkeyhint="send" placeholder="Ta réponse, ex. cuit" aria-label="Ta réponse">
+        <button class="btn" id="askgo" ${S.settings.apiKey ? "" : "disabled"}>Réanalyser</button></div>
+      <button class="textbtn" id="askno">Ignorer la question</button>
+    </section>` : ""}
     <section class="card">
       <label class="f">Nom du repas<input type="text" id="mealname" value="${esc(d.name)}" placeholder="ex. Poulet riz brocolis"></label>
       ${whenHTML()}
       ${d.hyp ? `<div class="note">${esc(d.hyp)}${d.conf ? ` <span class="muted">· confiance ${esc(d.conf)}</span>` : ""}</div>` : ""}
+      ${sources ? `<div class="muted small">Valeurs : ${sources}. Touche la ligne d'origine d'un aliment pour changer d'aliment Ciqual.</div>` : ""}
       <div class="muted small">Change les grammes : les calories et macros suivent automatiquement.</div>
     </section>
     ${itemsBlockHTML(`Ajouter au journal · ${esc(dayLabel(day))}`)}` : "";
@@ -800,8 +831,10 @@ Si l'utilisateur donne des quantités ou des précisions, elles priment sur ton 
 L'utilisateur peut avoir scanné des produits emballés, listés avec leur code-barres et leurs valeurs officielles pour 100 g du produit tel que vendu. Il les a mangés : chacun doit apparaître une fois dans "items", même sans photo, avec son "code" et ces valeurs exactes (jamais celles des tables).
 Pour un produit scanné, "grammes" est le poids du produit tel que vendu (souvent sec ou cru). Si l'utilisateur donne le poids servi d'un produit qui se cuit (ex. « 300 g de riz » dans l'assiette), convertis-le en poids tel que vendu (riz, pâtes, semoule : poids cuit divisé par 2,5 à 3 environ) et explique la conversion dans "hypotheses". Sans quantité ni photo exploitable, prends la portion indiquée ou une portion habituelle.
 Un aliment de la photo qui correspond à un produit scanné n'est compté qu'une fois, sous le produit scanné.
+Pour chaque aliment non scanné, donne aussi "ciqual" : son intitulé le plus proche dans la table Ciqual de l'Anses, avec l'état et la cuisson, ex. « Riz blanc, cuit », « Poulet, filet sans peau grillé/poêlé », « Huile d'olive vierge extra », « Brocoli, cuit à la vapeur ». Les valeurs de la table remplaceront les tiennes : sois précis sur cru ou cuit.
+Si une information change nettement le résultat et que tu ne peux pas la déduire (cru ou cuit, quantité, type de sauce, lait entier ou écrémé…), pose une seule question courte dans "question". Sinon, laisse "question" vide.
 Réponds uniquement avec un objet JSON valide, sans texte autour, de la forme :
-{"plat": "nom court du repas", "items": [{"nom": "string", "grammes": 0, "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0, "code": "code-barres, uniquement pour un produit scanné"}], "hypotheses": "une ou deux phrases sur ce qui est incertain", "confiance": "faible" | "moyenne" | "haute"}
+{"plat": "nom court du repas", "items": [{"nom": "string", "grammes": 0, "kcal": 0, "proteines": 0, "glucides": 0, "lipides": 0, "ciqual": "intitulé Ciqual", "code": "code-barres, uniquement pour un produit scanné"}], "hypotheses": "une ou deux phrases sur ce qui est incertain", "confiance": "faible" | "moyenne" | "haute", "question": ""}
 Les nombres sont sans unités. Si rien ne montre de nourriture et qu'aucun produit n'est scanné, renvoie "items": [] et explique pourquoi dans "hypotheses".`;
 
 async function callModel(){
@@ -822,7 +855,7 @@ async function callModel(){
     ? [{ type:"text", text:userText }, ...draft.photos.map(p => ({ type:"image_url", image_url:{ url:p.full } }))]
     : userText;
   const body = { model: st.model || "deepseek-flash", messages:[{ role:"system", content:SYSTEM }, { role:"user", content }],
-                 stream:false, max_tokens: st.deep ? 6000 : 1800, response_format:{ type:"json_object" } };
+                 stream:false, max_tokens: st.deep ? 6000 : 2400, response_format:{ type:"json_object" } };
   if (isDeepSeek) body.thinking = { type: st.deep ? "enabled" : "disabled" };
   if (isDeepSeek && st.deep) body.reasoning_effort = "high";
 
@@ -871,18 +904,24 @@ function productItem(pr, g){
 }
 async function analyse(){
   if (!draft.photos.length && !draft.products.length && !draft.note.trim()){ toast("Ajoute une photo, un produit scanné ou une description."); return; }
-  draft.loading = true; draft.error = ""; render();
+  draft.loading = true; draft.error = ""; draft.question = ""; render();
+  const ciqReady = loadCiqual().catch(() => null);   // téléchargée pendant que l'IA réfléchit
   try {
     const j = await callModel();
+    await ciqReady;
     const raw = Array.isArray(j.items) ? j.items : [];
     const byCode = new Map(draft.products.map(pr => [pr.code, pr]));
     const seen = new Set();
-    // l'IA choisit les grammes ; pour un produit scanné, les macros viennent toujours d'Open Food Facts
+    // l'IA choisit les grammes ; les macros viennent d'Open Food Facts (produit scanné),
+    // sinon de la table Ciqual quand la correspondance est sûre, sinon de l'estimation de l'IA
     const found = raw.map(x => {
       const pr = byCode.get(String(x.code ?? "").replace(/\D/g, ""));
-      if (!pr || seen.has(pr.code)) return normItem(x);
-      seen.add(pr.code);
-      return productItem(pr, num(x.grammes ?? x.g) || pr.portion || 100);
+      if (pr && !seen.has(pr.code)){ seen.add(pr.code); return productItem(pr, num(x.grammes ?? x.g) || pr.portion || 100); }
+      const it = normItem(x); it.ai = true;
+      // si les kcal de l'IA contredisent ses propres macros, ce sont les macros qui servent de repère
+      const aiK = (incoherent(it) ? atwater(it) : it.kcal) / it.g * 100;
+      const food = CIQ && it.g > 0 ? pickCiqual(String(x.ciqual || x.nom || ""), aiK) : null;
+      return food ? ciqItem(food, it.g, it.nom) : it;
     });
     const missing = draft.products.filter(pr => !seen.has(pr.code));
     missing.forEach(pr => found.push(productItem(pr, pr.portion || 100)));
@@ -890,6 +929,7 @@ async function analyse(){
     // les produits ajoutés tels quels restent ; le reste est remplacé par la nouvelle analyse
     draft.items = draft.items.filter(i => i.scan).concat(found);
     draft.name = j.plat || draft.name; draft.conf = j.confiance || "";
+    draft.question = String(j.question || "").trim();
     draft.hyp = [j.hypotheses || "", missing.length ? `Ajouté avec la portion indiquée, à vérifier : ${missing.map(p => p.nom).join(", ")}.` : ""].filter(Boolean).join(" ");
     draft.analysed = true;
     if (!found.length) draft.error = "Aucun aliment détecté. Ajoute des précisions ou saisis à la main.";
@@ -1129,6 +1169,112 @@ document.addEventListener("visibilitychange", () => {
   else if (me.paused){ me.paused = false; startCamera(me); }
 });
 
+/* ---------- table Ciqual ---------- */
+// ciqual.json : table Ciqual 2025 de l'Anses (Licence Ouverte), réduite à [code, nom, kcal, p, c, f] pour 100 g.
+// Chargée à la demande (≈ 70 Ko compressés) : l'IA nomme les aliments, la table donne les valeurs.
+const CSTOP = new Set("de du des la le les l d a au aux en et avec pour ou un une sur type".split(" "));
+const cnorm = s => String(s).toLowerCase().replace(/œ/g, "oe").replace(/æ/g, "ae").normalize("NFD").replace(/[̀-ͯ]/g, "");
+const ctoks = s => cnorm(s).replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(t => t && !CSTOP.has(t)).map(t => t.length > 3 ? t.replace(/[sx]$/, "") : t);
+let CIQ = null, ciqP = null;
+function loadCiqual(){
+  if (!ciqP) ciqP = fetch("ciqual.json").then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(j => {
+    CIQ = j.aliments.map(([code, nom, kcal, p, c, f]) => ({ code, nom, per:{ kcal, p, c, f },
+      // « (aliment moyen) » et « sans précision » marquent les entrées génériques : bonus, mais pas des mots à chercher
+      t: ctoks(nom.replace(/\(aliment moyen\)|sans précision( sur [^,)]*)?/gi, "")), generic: /aliment moyen|sans précision/i.test(nom),
+      head: ctoks(nom.split(",")[0]).join(" ") }));
+    return CIQ;
+  }).catch(() => { ciqP = null; throw new Error("Table Ciqual non chargée. Vérifie ta connexion."); });
+  return ciqP;
+}
+// deux mots correspondent s'ils sont égaux ou ne diffèrent que par la fin (cuit/cuite, grillé/grillée)
+const csame = (a, b) => a === b || (Math.min(a.length, b.length) >= 4 && Math.abs(a.length - b.length) <= 2 && (a.startsWith(b) || b.startsWith(a)));
+// head : partie avant la première virgule (« Banane » pour « Banane, chair sans peau, crue ») ;
+// si elle vaut exactement celle de la recherche, c'est l'aliment lui-même et non une variante (« Banane plantain »)
+function cscore(q, qhead, food){
+  let m = 0; for (const a of q) if (food.t.some(b => csame(a, b))) m++;
+  if (!m) return { s:0, cov:0 };
+  const cov = m / q.length, prec = m / Math.max(1, food.t.length);
+  return { s: cov * .75 + prec * .25 + (csame(q[0], food.t[0] || "") ? .08 : 0) + (food.generic ? .03 : 0) + (food.head === qhead ? .06 : 0), cov };
+}
+function searchCiqual(q, n){
+  const qt = ctoks(q), qhead = ctoks(String(q).split(",")[0]).join(" "); if (!qt.length || !CIQ) return [];
+  return CIQ.map(food => ({ food, ...cscore(qt, qhead, food) })).filter(x => x.s > .3)
+    .sort((x, y) => y.s - x.s || x.food.t.length - y.food.t.length).slice(0, n);
+}
+// correspondance automatique pour un aliment nommé par l'IA : tous les mots trouvés, et des calories
+// compatibles avec l'estimation de l'IA (évite cru/cuit ou une mauvaise variante) ; sinon on garde l'estimation
+function pickCiqual(q, aiK100){
+  const r = searchCiqual(q, 12).filter(x => x.cov === 1); if (!r.length) return null;
+  const near = x => !(aiK100 > 0) || Math.abs(x.food.per.kcal - aiK100) <= Math.max(20, .25 * aiK100);
+  let c = r[0];
+  if (!near(c)){
+    const alt = r.filter(x => x.s >= r[0].s - .15 && near(x)).sort((x, y) => Math.abs(x.food.per.kcal - aiK100) - Math.abs(y.food.per.kcal - aiK100))[0];
+    if (alt) c = alt;
+  }
+  return !(aiK100 > 0) || Math.abs(c.food.per.kcal - aiK100) <= Math.max(25, .35 * aiK100) ? c.food : null;
+}
+function ciqItem(food, g, nom){
+  const it = { nom: nom || food.nom, g, kcal: food.per.kcal*g/100, p: food.per.p*g/100, c: food.per.c*g/100, f: food.per.f*g/100,
+    src: { code: food.code, nom: food.nom, kcal: food.per.kcal } };
+  setRatio(it); return it;
+}
+// repère interne pour le choix Ciqual (rien n'est affiché) : kcal ≈ 4 × protéines + 4 × glucides + 9 × lipides
+const atwater = it => 4*it.p + 4*it.c + 9*it.f;
+const incoherent = it => !it.src && !it.code && it.kcal > 20 && (it.p || it.c || it.f) && Math.abs(it.kcal - atwater(it)) > Math.max(20, .2 * it.kcal);
+
+/* ---------- sélecteur d'aliment (Ciqual) ---------- */
+let PK = null;   // sélecteur ouvert : { mode: "item" | "add", i }
+function openPicker(mode, i){
+  if (PK) return;
+  PK = { mode, i };
+  const it = mode === "item" ? draft.items[i] : null;
+  document.body.insertAdjacentHTML("beforeend", `<div class="sheet-bg" id="pkbg"></div>
+    <div class="sheet" id="picker" role="dialog" aria-modal="true" aria-label="${mode === "item" ? "Choisir l'aliment" : "Ajouter un aliment"}">
+      <div class="sheet-h"><b>${mode === "item" ? "Choisir l'aliment" : "Ajouter un aliment"}</b><button class="rmbtn" id="pkclose" aria-label="Fermer">${XI}</button></div>
+      <input type="search" id="pkq" enterkeyhint="search" autocomplete="off" placeholder="Rechercher, ex. riz cuit, filet de poulet" value="${esc(it ? (it.src ? it.src.nom : it.nom) : "")}">
+      <div class="pklist" id="pklist"><div class="muted small">Chargement de la table Ciqual…</div></div>
+      ${mode === "item" ? `<button class="btn ghost" id="pkkeep">Garder les valeurs actuelles</button>`
+        : `<button class="btn ghost" id="pkfree">${PEN}Saisir à la main</button>`}
+      <div class="muted small" style="text-align:center">Valeurs pour 100 g : table Ciqual 2025, Anses.</div>
+    </div>`);
+  document.body.classList.add("noscroll");
+  history.pushState({ sheet:true }, "");
+  $("#pkbg").addEventListener("click", () => closePicker());
+  $("#pkclose").addEventListener("click", () => closePicker());
+  let t; $("#pkq").addEventListener("input", () => { clearTimeout(t); t = setTimeout(pkRender, 120); });
+  $("#pklist").addEventListener("click", e => {
+    const b = e.target.closest("[data-code]"); if (!b || !PK) return;
+    const food = CIQ.find(x => x.code === +b.dataset.code); if (!food) return;
+    if (PK.mode === "item"){
+      const cur = draft.items[PK.i];
+      draft.items[PK.i] = ciqItem(food, cur.g || 100, cur.nom.trim() || food.nom);
+    } else draft.items.push(ciqItem(food, 100));
+    const add = PK.mode === "add"; closePicker(); render();
+    if (add) document.querySelector("#items .item:last-child")?.scrollIntoView({ behavior:"smooth", block:"center" });
+  });
+  on2("#pkkeep", () => closePicker());
+  on2("#pkfree", () => { draft.items.push({ nom:"", g:0, kcal:0, p:0, c:0, f:0, ratio:null }); closePicker(); render(); });
+  if (mode === "add") $("#pkq").focus();
+  loadCiqual().then(() => { if (PK) pkRender(); }).catch(e => { const l = $("#pklist"); if (l) l.innerHTML = `<div class="err">${esc(e.message)}</div>`; });
+}
+const on2 = (sel, fn) => { const el = $(sel); if (el) el.addEventListener("click", fn); };
+function pkRender(){
+  const l = $("#pklist"); if (!l || !CIQ) return;
+  const q = $("#pkq").value.trim();
+  if (!q){ l.innerHTML = `<div class="muted small">Tape le nom d'un aliment : « riz cuit », « pomme », « emmental »…</div>`; return; }
+  const res = searchCiqual(q, 30);
+  l.innerHTML = res.length ? res.map(({ food }) => `<button class="pkrow" data-code="${food.code}"><b>${esc(food.nom)}</b>
+      <span class="muted small num">${fmt(food.per.kcal)} kcal · P ${d1(food.per.p)} · G ${d1(food.per.c)} · L ${d1(food.per.f)}</span></button>`).join("")
+    : `<div class="muted small">Aucun aliment trouvé. Essaie un mot plus simple, ex. « riz » ou « poulet grillé ».</div>`;
+}
+function closePicker(fromHistory){
+  if (!PK) return;
+  PK = null;
+  $("#picker")?.remove(); $("#pkbg")?.remove(); document.body.classList.remove("noscroll");
+  if (!fromHistory && history.state && history.state.sheet) history.back();
+}
+window.addEventListener("popstate", () => { if (PK) closePicker(true); });
+
 /* ---------- history ---------- */
 const kg1 = n => n.toLocaleString("fr-FR", { minimumFractionDigits:1, maximumFractionDigits:1 });
 function histReadout(d){
@@ -1362,7 +1508,8 @@ function settingsHTML(){
     <div class="muted small" id="persist" hidden></div>
     <div class="muted small">Sur iPhone, supprimer l'icône de l'écran d'accueil efface aussi ces données.</div>
     <button class="btn danger${armedDelete === "wipe" ? " armed" : ""}" id="wipe">${armedDelete === "wipe" ? "Toucher encore pour tout effacer" : "Tout effacer"}</button>
-  </section>`;
+  </section>
+  <div class="muted small" style="text-align:center;padding:0 8px">Données nutritionnelles : table Ciqual 2025 de l'Anses (Licence Ouverte 2.0) et Open Food Facts (licence ODbL).</div>`;
 }
 function goalCheck(){
   const v = k => num($("#g-"+k)?.value);
@@ -1465,8 +1612,20 @@ function bind(){
   }));
   on("#deep","change", e => { S.settings.deep = e.target.checked; save(); });
   on("#analyse","click", analyse);
-  on("#manual","click", () => { draft.items.push({ nom:"", g:0, kcal:0, p:0, c:0, f:0, ratio:null }); draft.analysed = true; render(); });
-  on("#additem","click", () => { draft.items.push({ nom:"", g:0, kcal:0, p:0, c:0, f:0, ratio:null }); render(); });
+  on("#manual","click", () => openPicker("add"));
+  on("#additem","click", () => openPicker("add"));
+  // délégation : la ligne « origine » est remplacée sans re-rendu pendant la saisie
+  on("#items","click", e => {
+    const pk = e.target.closest("[data-pick]"); if (pk) openPicker("item", +pk.dataset.pick);
+  });
+  // question de l'IA : la réponse rejoint les précisions et relance l'analyse
+  on("#askgo","click", () => {
+    const a = $("#askin").value.trim(); if (!a){ $("#askin").focus(); return; }
+    draft.note = (draft.note.trim() ? draft.note.trim() + "\n" : "") + draft.question + " " + a;
+    draft.question = ""; analyse();
+  });
+  on("#askin","keydown", e => { if (e.key === "Enter"){ e.preventDefault(); $("#askgo").click(); } });
+  on("#askno","click", () => { draft.question = ""; render(); });
   on("#reset","click", () => { draft = newDraft(); render(); });
   on("#mealname","input", e => draft.name = e.target.value);
   on("#savemeal","click", saveMeal);
@@ -1480,7 +1639,11 @@ function bind(){
       it.g = v;
       if (it.ratio){ for (const m of ["kcal","p","c","f"]){ it[m] = it.ratio[m]*v; const el = document.getElementById(`it-${i}-${m}`); if (el) el.value = it[m] ? r0(it[m]*10)/10 : ""; } }
       else setRatio(it);
-    } else { it[k] = v; setRatio(it); }
+    } else {
+      it[k] = v; setRatio(it);
+      // une valeur modifiée à la main ne vient plus de Ciqual ni du code-barres
+      if (it.src || it.code){ delete it.src; delete it.code; delete it.info; it.ai = false; const s = $("#src-" + i); if (s) s.outerHTML = srcHTML(it, i); }
+    }
     $("#totals").innerHTML = totalsHTML();
     const sb = $("#savemeal"); if (sb) sb.disabled = !draft.items.length;
   }));
