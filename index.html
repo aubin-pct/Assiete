@@ -273,6 +273,28 @@ body.noscroll{overflow:hidden}
 .item .src.other{color:var(--muted)}
 .ask{box-shadow:var(--shadow),inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 55%,transparent)}
 .pw input{flex:1;min-width:0}
+.notewrap{position:relative}
+.notewrap textarea{padding-right:58px}
+.mic{position:absolute;right:8px;bottom:8px;width:44px;height:44px;border:none;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.mic svg{width:22px;height:22px}
+.mic.on{background:var(--danger);color:var(--accent-ink);animation:micpulse 1.2s ease-in-out infinite}
+@keyframes micpulse{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--danger) 25%,transparent)}}
+
+/* bilan de la semaine */
+.wk{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wkc{display:flex;flex-direction:column;gap:2px;background:var(--sunk);border-radius:var(--r-md);padding:12px}
+.wkc b{font-family:var(--display);font-size:1.5rem;letter-spacing:-.02em;line-height:1.15}
+.wkc b small{font-size:.85rem;font-weight:500;color:var(--muted);font-family:var(--body);letter-spacing:0}
+.delta{font-size:.76rem;font-weight:600;color:var(--muted)}
+.wkdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.wkday{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:.72rem;color:var(--muted);font-weight:600}
+.wkday i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--sunk);border:1.5px dashed var(--line)}
+.wkday i svg{width:16px;height:16px}
+.wkday.ok i{background:var(--accent);border:none;color:var(--accent-ink)}
+.wkday.off i{background:color-mix(in srgb,var(--carb) 22%,transparent);border:none;color:var(--carb)}
+.wkstats{display:flex;flex-direction:column;gap:6px;font-size:.9rem}
+.wkstats div{display:flex;justify-content:space-between;gap:10px}
+.wkstats b{font-family:var(--display);font-variant-numeric:tabular-nums}
 
 /* sélecteur d'aliment */
 .sheet-bg{position:fixed;inset:0;z-index:40;background:var(--cam-scrim);animation:fadein .2s}
@@ -439,6 +461,7 @@ const pct = (v,g) => g > 0 ? Math.min(100, v/g*100) : 0;
 let toastT;
 // action facultative { label, fn } : bouton dans le toast (ex. « Annuler »), affiché plus longtemps
 function toast(msg, action){
+  if (!msg) return;
   const t = $("#toast");
   t.innerHTML = `<span>${esc(msg)}</span>` + (action ? `<button class="tact">${esc(action.label)}</button>` : "");
   t.classList.toggle("act", !!action);
@@ -468,6 +491,8 @@ const PLUS = ic(`<path d="M12 5v14M5 12h14"/>`, 2.2), CHECK = ic(`<path d="M5 12
 const REDO = ic(`<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/>`);
 const STARP = `<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>`;
 const STAR = ic(STARP), STARF = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">${STARP}</svg>`;
+const TRASH = ic(`<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>`);
+const MIC = ic(`<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>`);
 const TABLE = ic(`<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 10h16M10 4v16"/>`);
 const SHIELD = ic(`<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>`);
 const SHARE = ic(`<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>`);
@@ -499,6 +524,7 @@ function animateIn(){
 }
 function go(v){
   if (view === "add" && v !== "add" && draft.editId) draft = newDraft();   // quitter une modification l'abandonne
+  if (v !== "add") stopDictation();
   view = v; armedDelete = null; render(); window.scrollTo(0,0); animateIn();
 }
 
@@ -593,7 +619,7 @@ function journalHTML(){
     ? `<div class="rest"><span class="lbl">Restantes</span><b class="num">${fmt(rest)}</b><span class="muted small">Objectif ${fmt(g.kcal)} kcal</span></div>`
     : `<div class="rest over"><span class="lbl">Au-dessus</span><b class="num">+${fmt(-rest)}</b><span class="muted small">Objectif ${fmt(g.kcal)} kcal</span></div>`;
   const list = meals.length ? meals.map(m => {
-    const x = totals(m.items), open = openMeal === m.id, armed = armedDelete === m.id, armedP = armedDelete === "ph:" + m.id;
+    const x = totals(m.items), open = openMeal === m.id;
     return `<div class="meal">
       <button class="mrow" data-toggle="${m.id}" aria-expanded="${open}">
         ${m.thumb ? `<img class="thumb" src="${m.thumb}" alt="">` : `<div class="thumb">${PLATE}</div>`}
@@ -610,8 +636,8 @@ function journalHTML(){
           <button class="btn ghost${isFav(m) ? " on" : ""}" data-fav="${m.id}" aria-pressed="${isFav(m)}">${isFav(m) ? STARF : STAR}Favori</button>
         </div>
         <div class="mact">
-          ${m.thumb ? `<button class="btn sm danger${armedP ? " armed" : ""}" data-delphoto="${m.id}">${armedP ? "Confirmer" : "Retirer la photo"}</button>` : ""}
-          <button class="btn sm danger${armed ? " armed" : ""}" data-del="${m.id}">${armed ? "Confirmer" : "Supprimer le repas"}</button>
+          ${m.thumb ? `<button class="btn sm danger" data-delphoto="${m.id}">Retirer la photo</button>` : ""}
+          <button class="btn sm danger" data-del="${m.id}">${TRASH}Supprimer le repas</button>
         </div></div>` : ""}
     </div>`;
   }).join("") : `<div class="empty"><div class="orb">${PLATE}</div>
@@ -790,7 +816,10 @@ function addHTML(){
   ${productsHTML()}
   <section class="card">
     ${typeSegHTML()}
-    <label class="f">Quantités et précisions${d.products.length && !d.photos.length ? "" : " (facultatif)"}<textarea id="note" placeholder="ex. 300 g de riz cuit, 1 c. à s. d'huile d'olive, un yaourt entier">${esc(d.note)}</textarea></label>
+    <div class="fl"><label for="note">Quantités et précisions${d.products.length && !d.photos.length ? "" : " (facultatif)"}</label>
+      <div class="notewrap"><textarea id="note" placeholder="ex. 300 g de riz cuit, 1 c. à s. d'huile d'olive, un yaourt entier">${esc(d.note)}</textarea>
+        ${SpeechRec ? `<button type="button" class="mic${rec ? " on" : ""}" id="mic" aria-label="${rec ? "Arrêter la dictée" : "Dicter"}" aria-pressed="${!!rec}">${MIC}</button>` : ""}</div>
+      ${rec ? `<span class="small" id="micst" style="color:var(--accent)">J'écoute… parle normalement, puis touche le micro.</span>` : ""}</div>
     <label class="switch"><span>Analyse approfondie<small>Plus lente, un peu plus précise</small></span><input type="checkbox" id="deep" ${S.settings.deep ? "checked" : ""}></label>
     ${d.error ? `<div class="err" role="alert">${esc(d.error)}</div>` : ""}
     <button class="btn" id="analyse" ${canAnalyse() ? "" : "disabled"}>${d.loading ? `<span class="spinner"></span>Analyse en cours` : `${SPARK}${d.analysed ? "Réanalyser" : "Analyser mon repas"}`}</button>
@@ -958,6 +987,39 @@ function saveMeal(){
     toast("Repas ajouté");
   }
   curDate = date; draft = newDraft(); go("journal");
+}
+
+/* ---------- dictée ---------- */
+// Reconnaissance vocale du navigateur (Chrome Android, Safari iOS) : le son part chez Google ou Apple pour être transcrit.
+// Sans elle, le bouton micro n'apparaît pas ; la dictée du clavier reste possible.
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+let rec = null;
+function noteChanged(){
+  const b = $("#analyse"); if (b) b.disabled = !canAnalyse();
+  const h = $("#ahint"); if (h) h.hidden = !!(draft.photos.length || draft.products.length || draft.note.trim());
+}
+function stopDictation(){ if (rec){ try { rec.abort(); } catch(e){} rec = null; } }
+function toggleDictation(){
+  if (rec){ rec.stop(); return; }
+  let r;
+  try { r = new SpeechRec(); } catch(e){ toast("Dictée indisponible ici : utilise le micro du clavier."); return; }
+  const base = draft.note.trim();
+  r.lang = "fr-FR"; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+  r.onresult = e => {
+    let t = ""; for (const x of e.results) t += x[0].transcript;
+    draft.note = (base ? base + (/[.,;]$/.test(base) ? " " : ", ") : "") + t.trim();
+    const ta = $("#note"); if (ta) ta.value = draft.note;
+    noteChanged();
+  };
+  r.onerror = e => {
+    toast(e.error === "not-allowed" || e.error === "service-not-allowed" ? "Micro refusé : autorise-le dans les réglages du navigateur."
+      : e.error === "no-speech" ? "Je n'ai rien entendu. Touche le micro et parle."
+      : e.error === "network" ? "La dictée a besoin du réseau. Vérifie ta connexion."
+      : e.error === "aborted" ? "" : "Dictée interrompue. Réessaie ou utilise le micro du clavier.");
+  };
+  r.onend = () => { if (rec === r){ rec = null; if (view === "add") render(); } };
+  try { r.start(); rec = r; render(); }
+  catch(e){ toast("Dictée indisponible ici : utilise le micro du clavier."); }
 }
 
 /* ---------- code-barres ---------- */
@@ -1378,13 +1440,50 @@ function energyHTML(){
     <div class="muted small">Calcul : apports moyens moins la variation de poids (7 700 kcal par kg). Les jours à moins de ${MIN_DAY_KCAL} kcal sont ignorés. Refais le point chaque semaine.</div>
   </section>`;
 }
+/* ---------- bilan de la semaine ---------- */
+// 7 derniers jours sans aujourd'hui ; une journée compte si elle dépasse MIN_DAY_KCAL (sinon repas oubliés)
+const UP = ic(`<path d="M12 19V5M6 11l6-6 6 6"/>`, 2.2), DOWN = ic(`<path d="M12 5v14M6 13l6 6 6-6"/>`, 2.2);
+function weekHTML(){
+  const g = S.settings.goals, today = todayISO();
+  const days = []; for (let i = 7; i >= 1; i--) days.push(shift(today, -i));
+  const tot = days.map(dayTotals), full = t => t.kcal >= MIN_DAY_KCAL;
+  const done = tot.filter(full);
+  const prev = []; for (let i = 14; i >= 8; i--){ const t = dayTotals(shift(today, -i)); if (full(t)) prev.push(t); }
+  if (!done.length) return `<section class="card"><h2>Bilan de la semaine</h2>
+    <div class="muted small">Pas encore de journée complète sur les 7 derniers jours. Note tes repas : le bilan apparaîtra ici.</div></section>`;
+  const inGoal = t => full(t) && Math.abs(t.kcal - g.kcal) <= g.kcal * .1;   // à ±10 % de l'objectif
+  const protOk = t => full(t) && t.p >= g.p * .95;
+  const aK = avg(done.map(t => t.kcal)), aP = avg(done.map(t => t.p));
+  const dTxt = (v, ref, unit) => ref === null ? "" : `<span class="delta">${Math.abs(v - ref) < .5 ? "=" : (v > ref ? "+" : "−") + fmt(Math.abs(v - ref))} ${unit} vs 7 jours d'avant</span>`;
+  const pK = prev.length ? avg(prev.map(t => t.kcal)) : null, pP = prev.length ? avg(prev.map(t => t.p)) : null;
+  // série : jours consécutifs avec au moins un repas, jusqu'à aujourd'hui (ou hier si aujourd'hui est encore vide)
+  const logged = new Set(S.meals.map(m => m.date));
+  let streak = 0; for (let d = logged.has(today) ? today : shift(today, -1); logged.has(d); d = shift(d, -1)) streak++;
+  const dots = days.map((d, i) => { const t = tot[i], cls = !full(t) ? "" : inGoal(t) ? " ok" : " off";
+    const icn = !full(t) ? "" : inGoal(t) ? CHECK : t.kcal > g.kcal ? UP : DOWN;
+    const lbl = !full(t) ? "non noté" : inGoal(t) ? "dans l'objectif" : t.kcal > g.kcal ? "au-dessus" : "en dessous";
+    return `<div class="wkday${cls}" aria-label="${esc(dayLabel(d))} : ${lbl}"><i>${icn}</i>${parseISO(d).toLocaleDateString("fr-FR", { weekday:"narrow" })}</div>`; }).join("");
+  return `<section class="card">
+    <div class="sect2"><h2>Bilan de la semaine</h2><span class="muted small">sans aujourd'hui</span></div>
+    <div class="wk">
+      <div class="wkc"><span class="lbl">Calories / jour</span><b class="num">${fmt(aK)}</b><span class="muted small">objectif ${fmt(g.kcal)}</span>${dTxt(aK, pK, "kcal")}</div>
+      <div class="wkc"><span class="lbl">Protéines / jour</span><b class="num">${fmt(aP)}<small> g</small></b><span class="muted small">objectif ${fmt(g.p)} g</span>${dTxt(aP, pP, "g")}</div>
+    </div>
+    <div class="wkdays">${dots}</div>
+    <div class="wkstats">
+      <div><span>Jours dans l'objectif (±10 %)</span><b>${tot.filter(inGoal).length}/7</b></div>
+      <div><span>Protéines atteintes</span><b>${tot.filter(protOk).length}/7</b></div>
+      <div><span>Jours notés</span><b>${done.length}/7</b></div>
+      <div><span>Série en cours</span><b>${streak} jour${streak > 1 ? "s" : ""}</b></div>
+    </div>
+    <div class="muted small">Moyennes sur les jours complets (plus de ${MIN_DAY_KCAL} kcal notées).</div>
+  </section>`;
+}
 function historyHTML(){
   const g = S.settings.goals, today = todayISO(), sel = histSel || today;
   const days = []; for (let i = 13; i >= 0; i--) days.push(shift(today, -i));
   const tots = days.map(dayTotals);
   const max = Math.max(g.kcal*1.25, ...tots.map(t => t.kcal));
-  let sumK = 0, sumP = 0, n = 0;
-  tots.forEach((t, i) => { const back = 13 - i; if (t.kcal > 0 && back > 0 && back <= 7){ sumK += t.kcal; sumP += t.p; n++; } });
   const cols = days.map((d, i) => { const t = tots[i];
     return `<button class="col${t.kcal ? "" : " none"}${t.kcal > g.kcal*1.1 ? " over" : ""}${d === sel ? " sel" : ""}" data-day="${d}" aria-label="${esc(dayLabel(d))} : ${fmt(t.kcal)} kcal"><i${t.kcal ? ` style="height:${t.kcal/max*100}%"` : ""}></i></button>`; }).join("");
   const letters = days.map(d => `<span${d === today ? ` class="today"` : ""}>${parseISO(d).toLocaleDateString("fr-FR", { weekday:"narrow" })}</span>`).join("");
@@ -1397,11 +1496,7 @@ function historyHTML(){
   const periods = [[30,"1 mois"],[90,"3 mois"],[0,"Tout"]];
   return `
   <div class="top"><div><div class="title">Historique</div><div class="sub">Tes tendances récentes</div></div></div>
-  <section class="card">
-    <h2>Moyenne des 7 derniers jours</h2>
-    <div class="num" style="font-size:1.5rem;font-weight:700;letter-spacing:-.02em">${n ? `${fmt(sumK/n)} kcal · ${fmt(sumP/n)} g prot.` : "Pas encore assez de données"}</div>
-    <div class="muted small">Calculée sur les jours complets renseignés, sans aujourd'hui.</div>
-  </section>
+  ${weekHTML()}
   <section class="card">
     <h2>14 derniers jours</h2>
     <div class="hread" id="hread">${histReadout(sel)}</div>
@@ -1529,10 +1624,13 @@ function bind(){
   document.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
     openMeal = openMeal === b.dataset.toggle ? null : b.dataset.toggle; armedDelete = null; render();
   }));
+  // suppression immédiate, rattrapable pendant 5 s avec « Annuler » (remis à sa place)
   document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
-    const id = b.dataset.del;
-    if (armedDelete !== id){ arm(id); render(); return; }
-    S.meals = S.meals.filter(m => m.id !== id); armedDelete = null; if (openMeal === id) openMeal = null; save(); render(); toast("Repas supprimé");
+    const idx = S.meals.findIndex(m => m.id === b.dataset.del); if (idx < 0) return;
+    const [m] = S.meals.splice(idx, 1); if (openMeal === m.id) openMeal = null;
+    if (!save()){ S.meals.splice(idx, 0, m); return; }
+    render();
+    toast("Repas supprimé", { label:"Annuler", fn:() => { S.meals.splice(Math.min(idx, S.meals.length), 0, m); openMeal = m.id; save(); render(); } });
   }));
   const mealOf = b => S.meals.find(m => m.id === b.dataset.edit || m.id === b.dataset.redo || m.id === b.dataset.fav);
   document.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editMeal(b.dataset.edit)));
@@ -1543,11 +1641,9 @@ function bind(){
   on("#copyday","click", () => logCopies(S.meals.filter(m => m.date === curDate), todayISO(), true));
   on("#copyyest","click", () => logCopies(S.meals.filter(m => m.date === shift(todayISO(), -1)), todayISO(), true));
   document.querySelectorAll("[data-delphoto]").forEach(b => b.addEventListener("click", () => {
-    const id = b.dataset.delphoto, key = "ph:" + id;
-    if (armedDelete !== key){ arm(key); render(); return; }
-    const m = S.meals.find(x => x.id === id); armedDelete = null;
-    if (m){ m.thumb = null; save(); }
-    render(); toast("Photo retirée");
+    const m = S.meals.find(x => x.id === b.dataset.delphoto); if (!m) return;
+    const old = m.thumb; m.thumb = null; save(); render();
+    toast("Photo retirée", { label:"Annuler", fn:() => { m.thumb = old; save(); render(); } });
   }));
   // add
   const onPhoto = async e => {
@@ -1600,11 +1696,8 @@ function bind(){
     const it = productItem(pr, pr.portion || 100); it.scan = true;
     draft.items.push(it); if (!draft.name.trim()) draft.name = pr.nom; render();
   }));
-  on("#note","input", e => {
-    draft.note = e.target.value;
-    const b = $("#analyse"); if (b) b.disabled = !canAnalyse();
-    const h = $("#ahint"); if (h) h.hidden = !!(draft.photos.length || draft.products.length || draft.note.trim());
-  });
+  on("#note","input", e => { draft.note = e.target.value; noteChanged(); });
+  on("#mic","click", toggleDictation);
   document.querySelectorAll("[data-type]").forEach(b => b.addEventListener("click", () => {
     draft.type = b.dataset.type; draft.typeSet = true;
     document.querySelectorAll("[data-type]").forEach(x => x.setAttribute("aria-checked", String(x === b)));
